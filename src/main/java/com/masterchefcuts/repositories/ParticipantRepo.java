@@ -5,5 +5,5 @@ import com.masterchefcuts.model.Participant;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ParticipantRepo extends JpaRepository<Participant, Integer> {
+public interface ParticipantRepo extends JpaRepository<Participant, String> {    
 }

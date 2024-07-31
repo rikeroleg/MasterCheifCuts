@@ -9,10 +9,6 @@ import org.springframework.context.annotation.Configuration;
 public class MasterchefcutsApplication {
 
 	public static void main(String[] args) {
-		// AWSRDSService awsRDS = new AWSRDSService();
-		// awsRDS.listInstances();
 		SpringApplication.run(MasterchefcutsApplication.class, args);
-		
 	}
-
 }
