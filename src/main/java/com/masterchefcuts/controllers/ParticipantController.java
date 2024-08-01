@@ -19,5 +19,4 @@ public class ParticipantController {
         participantService.addParticipant(participant);
         return "Participant added successfully";
     }
-        
 }
