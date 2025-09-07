@@ -9,28 +9,26 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import ./Order.java;
 
 @Entity
+@Table(name = "cart_items")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "participants")
-public class Participant {
+public class CartItem {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", unique = true, updatable = false)
-    private String id;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String phone;
-    private String address;
-    private String status;
-    private String costumerType;
-    private Order order;
-    private double totalSpent;
+    @Column(name = "id", updatable = false, nullable = false)
+    private Long id;
+    private String productId;
+    private String productName;
+    private Long orderId;
+    private String participantId;
+    private int quantity;
+    private double totalPrice;
+    private double pricePerLb;
+    private String addedDate;
     
 }

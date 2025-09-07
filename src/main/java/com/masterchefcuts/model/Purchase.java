@@ -9,28 +9,24 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import ./Order.java;
 
 @Entity
+@Table(name = "purchases")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "participants")
-public class Participant {
+public class Purchase {
 
     @Id
     @UuidGenerator
-    @Column(name = "id", unique = true, updatable = false)
-    private String id;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String phone;
-    private String address;
+    @Column(name = "id", updatable = false, nullable = false)
+    private Long id;
+    private String participantId;
+    private String purchaseDate;
+    private double totalAmount;
+    private String items; // This could be a JSON string or a serialized list of items
     private String status;
-    private String costumerType;
-    private Order order;
-    private double totalSpent;
+    private String notes;
     
 }
