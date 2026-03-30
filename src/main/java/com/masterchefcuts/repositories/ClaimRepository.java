@@ -1,0 +1,17 @@
+package com.masterchefcuts.repositories;
+
+import com.masterchefcuts.model.Claim;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ClaimRepository extends JpaRepository<Claim, Long> {
+
+    List<Claim> findByBuyerIdOrderByClaimedAtDesc(String buyerId);
+
+    List<Claim> findByListingIdOrderByClaimedAtAsc(Long listingId);
+
+    boolean existsByCutId(Long cutId);
+}

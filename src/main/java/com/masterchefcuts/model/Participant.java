@@ -1,36 +1,53 @@
 package com.masterchefcuts.model;
 
+import com.masterchefcuts.enums.Role;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.UuidGenerator;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import ./Order.java;
 
 @Entity
+@Table(name = "participants")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "participants")
+@Builder
 public class Participant {
 
     @Id
     @UuidGenerator
     @Column(name = "id", unique = true, updatable = false)
     private String id;
+
     private String firstName;
     private String lastName;
+
+    @Column(unique = true, nullable = false)
     private String email;
+
+    @Column(nullable = false)
+    private String password;
+
     private String phone;
-    private String address;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
+
+    private String shopName;
+
+    private String street;
+    private String apt;
+    private String city;
+    private String state;
+    private String zipCode;
+
     private String status;
-    private String costumerType;
-    private Order order;
     private double totalSpent;
-    
+
+    @Builder.Default
+    private boolean approved = true;
+
+    private String resetToken;
+    private java.time.LocalDateTime resetTokenExpiry;
 }
