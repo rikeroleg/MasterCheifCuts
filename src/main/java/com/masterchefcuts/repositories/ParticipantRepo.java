@@ -5,5 +5,11 @@ import com.masterchefcuts.model.Participant;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ParticipantRepo extends JpaRepository<Participant, String> {    
+public interface ParticipantRepo extends JpaRepository<Participant, String> {
+
+    java.util.Optional<Participant> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    java.util.Optional<Participant> findByResetToken(String resetToken);
 }

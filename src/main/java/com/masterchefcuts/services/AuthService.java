@@ -1,0 +1,132 @@
+package com.masterchefcuts.services;
+
+import com.masterchefcuts.config.JwtUtil;
+import com.masterchefcuts.dto.AuthResponse;
+import com.masterchefcuts.dto.LoginRequest;
+import com.masterchefcuts.dto.RegisterRequest;
+import com.masterchefcuts.enums.Role;
+import com.masterchefcuts.model.Participant;
+import com.masterchefcuts.repositories.ParticipantRepo;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final ParticipantRepo participantRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    @Transactional
+    public AuthResponse register(RegisterRequest req) {
+        if (participantRepo.existsByEmail(req.getEmail()))
+            throw new RuntimeException("An account with that email already exists.");
+
+        boolean isFarmer = req.getRole() == Role.FARMER;
+
+        Participant participant = Participant.builder()
+                .firstName(req.getFirstName())
+                .lastName(req.getLastName())
+                .email(req.getEmail())
+                .password(passwordEncoder.encode(req.getPassword()))
+                .phone(req.getPhone())
+                .role(req.getRole())
+                .shopName(req.getShopName())
+                .street(req.getStreet())
+                .apt(req.getApt())
+                .city(req.getCity())
+                .state(req.getState())
+                .zipCode(req.getZipCode())
+                .status("ACTIVE")
+                .totalSpent(0)
+                .approved(!isFarmer)
+                .build();
+
+        participant = participantRepo.save(participant);
+        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
+        return buildResponse(participant, token);
+    }
+
+    public AuthResponse login(LoginRequest req) {
+        Participant participant = participantRepo.findByEmail(req.getEmail())
+                .orElseThrow(() -> new RuntimeException("Incorrect email or password."));
+
+        if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
+            throw new RuntimeException("Incorrect email or password.");
+
+        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
+        return buildResponse(participant, token);
+    }
+
+    public AuthResponse getMe(String participantId) {
+        Participant participant = participantRepo.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+        return buildResponse(participant, null);
+    }
+
+    @Transactional
+    public AuthResponse updateProfile(String participantId, RegisterRequest req) {
+        Participant participant = participantRepo.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+
+        if (req.getFirstName() != null) participant.setFirstName(req.getFirstName());
+        if (req.getLastName()  != null) participant.setLastName(req.getLastName());
+        if (req.getShopName()  != null) participant.setShopName(req.getShopName());
+        if (req.getStreet()    != null) participant.setStreet(req.getStreet());
+        if (req.getApt()       != null) participant.setApt(req.getApt());
+        if (req.getCity()      != null) participant.setCity(req.getCity());
+        if (req.getState()     != null) participant.setState(req.getState());
+        if (req.getZipCode()   != null) participant.setZipCode(req.getZipCode());
+        if (req.getPhone()     != null) participant.setPhone(req.getPhone());
+
+        participant = participantRepo.save(participant);
+        return buildResponse(participant, null);
+    }
+
+    @Transactional
+    public void forgotPassword(String email, EmailService emailService) {
+        participantRepo.findByEmail(email).ifPresent(p -> {
+            String token = UUID.randomUUID().toString();
+            p.setResetToken(token);
+            p.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
+            participantRepo.save(p);
+            emailService.sendPasswordReset(p.getEmail(), p.getFirstName(), token);
+        });
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        Participant p = participantRepo.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired reset link."));
+        if (p.getResetTokenExpiry() == null || p.getResetTokenExpiry().isBefore(LocalDateTime.now()))
+            throw new RuntimeException("Reset link has expired.");
+        p.setPassword(passwordEncoder.encode(newPassword));
+        p.setResetToken(null);
+        p.setResetTokenExpiry(null);
+        participantRepo.save(p);
+    }
+
+    private AuthResponse buildResponse(Participant p, String token) {
+        return AuthResponse.builder()
+                .token(token)
+                .id(p.getId())
+                .firstName(p.getFirstName())
+                .lastName(p.getLastName())
+                .email(p.getEmail())
+                .role(p.getRole())
+                .shopName(p.getShopName())
+                .street(p.getStreet())
+                .apt(p.getApt())
+                .city(p.getCity())
+                .state(p.getState())
+                .zipCode(p.getZipCode())
+                .approved(p.isApproved())
+                .build();
+    }
+}
