@@ -39,7 +39,7 @@ public class AWSRDSService {
             .engine("mysql")
             .multiAZ(false)
             .masterUsername("admin")
-            .masterUserPassword("MmZaH6uLtRyvlE3Hf3IX")
+            .masterUserPassword(System.getenv("RDS_MASTER_PASSWORD"))
             .dbName("database-2")
             .build();
 

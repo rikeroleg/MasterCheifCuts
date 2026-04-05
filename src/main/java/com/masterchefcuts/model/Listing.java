@@ -38,6 +38,9 @@ public class Listing {
     private String sourceFarm;
     private String description;
 
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
+
     @Column(nullable = false)
     private String zipCode;
 
