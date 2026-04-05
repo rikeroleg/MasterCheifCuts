@@ -24,9 +24,21 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     @Transactional
-    public AuthResponse register(RegisterRequest req) {
-        if (participantRepo.existsByEmail(req.getEmail()))
+    public AuthResponse register(RegisterRequest req, EmailService emailService) {
+        java.util.Optional<Participant> existing = participantRepo.findByEmail(req.getEmail());
+        if (existing.isPresent()) {
+            Participant ex = existing.get();
+            /* Email verification disabled
+            if (!ex.isEmailVerified()) {
+                String newToken = UUID.randomUUID().toString();
+                ex.setVerificationToken(newToken);
+                participantRepo.save(ex);
+                emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
+                return buildResponse(ex, null);
+            }
+            */
             throw new RuntimeException("An account with that email already exists.");
+        }
 
         boolean isFarmer = req.getRole() == Role.FARMER;
 
@@ -48,9 +60,15 @@ public class AuthService {
                 .approved(!isFarmer)
                 .build();
 
+        /* Email verification disabled
+        String verificationToken = UUID.randomUUID().toString();
+        participant.setEmailVerified(false);
+        participant.setVerificationToken(verificationToken);
+        */
+        participant.setEmailVerified(true);
         participant = participantRepo.save(participant);
-        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
-        return buildResponse(participant, token);
+        // emailService.sendEmailVerification(participant.getEmail(), participant.getFirstName(), verificationToken);
+        return buildResponse(participant, null);
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -60,8 +78,22 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
             throw new RuntimeException("Incorrect email or password.");
 
+        /* Email verification disabled
+        if (!participant.isEmailVerified())
+            throw new RuntimeException("EMAIL_NOT_VERIFIED");
+        */
+
         String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
         return buildResponse(participant, token);
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        Participant p = participantRepo.findByVerificationToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired verification link."));
+        p.setEmailVerified(true);
+        p.setVerificationToken(null);
+        participantRepo.save(p);
     }
 
     public AuthResponse getMe(String participantId) {

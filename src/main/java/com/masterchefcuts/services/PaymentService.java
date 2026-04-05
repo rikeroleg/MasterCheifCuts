@@ -27,6 +27,16 @@ public class PaymentService {
         Stripe.apiKey = stripeSecretKey;
     }
 
+    public PaymentIntentResponse createCartIntent(long amountCents) throws StripeException {
+        PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                .setAmount(amountCents)
+                .setCurrency("usd")
+                .putMetadata("type", "cart")
+                .build();
+        PaymentIntent intent = PaymentIntent.create(params);
+        return new PaymentIntentResponse(intent.getClientSecret(), amountCents, "usd");
+    }
+
     public PaymentIntentResponse createIntent(PaymentIntentRequest request) throws StripeException {
         Listing listing = listingRepository.findById(request.getListingId())
                 .orElseThrow(() -> new IllegalArgumentException("Listing not found"));

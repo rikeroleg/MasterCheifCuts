@@ -1,4 +1,4 @@
-package com.masterchefcuts.services;
+﻿package com.masterchefcuts.services;
 
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
@@ -86,6 +86,17 @@ public class EmailService {
                 + "http://localhost:5173/reset-password?token=" + token + "\n\n"
                 + "If you didn't request this, ignore this email — your password won't change.\n\n"
                 + "— MasterChef Cuts";
+        send(to, subject, body);
+    }
+
+    @Async
+    public void sendEmailVerification(String to, String firstName, String token) {
+        String subject = "[MasterChef Cuts] Verify your email address";
+        String body = "Hi " + firstName + ",\n\n"
+                + "Please verify your email address by clicking the link below:\n\n"
+                + "http://localhost:5173/verify-email?token=" + token + "\n\n"
+                + "This link is valid for 24 hours. If you did not create an account, ignore this email.\n\n"
+                + "-- MasterChef Cuts";
         send(to, subject, body);
     }
 

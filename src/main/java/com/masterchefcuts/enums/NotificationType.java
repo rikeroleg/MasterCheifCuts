@@ -4,5 +4,6 @@ public enum NotificationType {
     CUT_CLAIMED,
     LISTING_FULL,
     PROCESSING_SET,
-    COMPLETE
+    COMPLETE,
+    REQUEST_FULFILLED
 }

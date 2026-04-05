@@ -53,11 +53,12 @@ public class ListingService {
         return toDto(listingRepository.save(listing));
     }
 
+    @Transactional(readOnly = true)
     public List<ListingResponse> getAll(String zipCode, String animalType) {
         List<Listing> results;
         if (animalType != null && !animalType.isBlank()) {
             results = listingRepository.findByAnimalTypeAndStatusOrderByPostedAtDesc(
-                    AnimalType.valueOf(animalType.toUpperCase()), ListingStatus.ACTIVE);
+                    AnimalType.fromString(animalType), ListingStatus.ACTIVE);
         } else if (zipCode != null && !zipCode.isBlank()) {
             results = listingRepository.findByZipCodeAndStatusOrderByPostedAtDesc(zipCode, ListingStatus.ACTIVE);
         } else {
@@ -66,11 +67,13 @@ public class ListingService {
         return results.stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ListingResponse getById(Long id) {
         return toDto(listingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Listing not found")));
     }
 
+    @Transactional(readOnly = true)
     public List<ListingResponse> getByFarmer(String farmerId) {
         return listingRepository.findByFarmerIdOrderByPostedAtDesc(farmerId)
                 .stream().map(this::toDto).collect(Collectors.toList());

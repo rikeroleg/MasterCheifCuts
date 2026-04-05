@@ -21,7 +21,7 @@ public class Order {
     @Id
     @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false)
-    private Long id;
+    private String id;
     private String participantId;
     private String orderDate;
     private String status;
