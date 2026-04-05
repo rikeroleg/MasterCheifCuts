@@ -1,4 +1,4 @@
-package com.masterchefcuts.model;
+﻿package com.masterchefcuts.model;
 
 import com.masterchefcuts.enums.Role;
 import jakarta.persistence.*;
@@ -50,4 +50,7 @@ public class Participant {
 
     private String resetToken;
     private java.time.LocalDateTime resetTokenExpiry;
+
+    private boolean emailVerified;
+    private String verificationToken;
 }

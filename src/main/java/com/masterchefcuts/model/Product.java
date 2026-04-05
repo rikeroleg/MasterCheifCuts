@@ -22,7 +22,7 @@ public class Product {
     @Id
     @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false)
-    private Long id;
+    private String id;
     private String name;
     private String product;
     private String cutType;

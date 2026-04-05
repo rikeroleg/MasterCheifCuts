@@ -27,7 +27,6 @@ public class Listing {
     @JoinColumn(name = "farmer_id", nullable = false)
     private Participant farmer;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AnimalType animalType;
 

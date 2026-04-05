@@ -21,7 +21,7 @@ public class CartItem {
     @Id
     @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false)
-    private Long id;
+    private String id;
     private String productId;
     private String productName;
     private Long orderId;

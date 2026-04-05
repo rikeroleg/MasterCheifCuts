@@ -39,6 +39,7 @@ public class Notification {
     private Long listingId;
 
     @Builder.Default
+    @Column(name = "is_read")
     private boolean read = false;
 
     @Builder.Default

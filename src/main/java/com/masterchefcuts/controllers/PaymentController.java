@@ -1,5 +1,6 @@
 package com.masterchefcuts.controllers;
 
+import com.masterchefcuts.dto.CartPaymentIntentRequest;
 import com.masterchefcuts.dto.PaymentIntentRequest;
 import com.masterchefcuts.dto.PaymentIntentResponse;
 import com.masterchefcuts.services.PaymentService;
@@ -19,5 +20,11 @@ public class PaymentController {
     @PostMapping("/api/payments/intent")
     public ResponseEntity<PaymentIntentResponse> createIntent(@RequestBody PaymentIntentRequest request) throws StripeException {
         return ResponseEntity.ok(paymentService.createIntent(request));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/api/payments/cart-intent")
+    public ResponseEntity<PaymentIntentResponse> createCartIntent(@RequestBody CartPaymentIntentRequest request) throws StripeException {
+        return ResponseEntity.ok(paymentService.createCartIntent(request.getAmountCents()));
     }
 }
