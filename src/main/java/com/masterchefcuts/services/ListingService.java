@@ -13,9 +13,12 @@ import com.masterchefcuts.repositories.ClaimRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,6 +31,10 @@ public class ListingService {
     private final ClaimRepository claimRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+
+    // Optional — only present under the "aws" Spring profile
+    @Autowired(required = false)
+    private S3Service s3Service;
 
     @Transactional
     public ListingResponse create(String farmerId, ListingRequest req) {
@@ -110,6 +117,43 @@ public class ListingService {
         return toDto(listingRepository.findById(listingId).get());
     }
 
+    @Transactional
+    public ListingResponse uploadPhoto(Long listingId, String farmerId, MultipartFile file) {
+        if (s3Service == null)
+            throw new RuntimeException("Photo upload is not available in this environment");
+
+        // Validate MIME type — do NOT trust file extension, check content type
+        String contentType = file.getContentType();
+        if (contentType == null || !List.of("image/jpeg", "image/png", "image/webp").contains(contentType))
+            throw new IllegalArgumentException("Only JPEG, PNG, and WebP images are accepted");
+
+        // Validate size — 5 MB max
+        if (file.getSize() > 5L * 1024 * 1024)
+            throw new IllegalArgumentException("Image must be under 5MB");
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new RuntimeException("Listing not found"));
+
+        if (!listing.getFarmer().getId().equals(farmerId))
+            throw new RuntimeException("Not authorized to modify this listing");
+
+        String ext = switch (contentType) {
+            case "image/png"  -> "png";
+            case "image/webp" -> "webp";
+            default           -> "jpg";
+        };
+        String key = "listings/" + listingId + "/cover." + ext;
+
+        try {
+            String imageUrl = s3Service.upload(key, file.getInputStream(), file.getSize(), contentType);
+            listing.setImageUrl(imageUrl);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read uploaded file", e);
+        }
+
+        return toDto(listingRepository.save(listing));
+    }
+
     public ListingResponse toDto(Listing l) {
         List<ListingResponse.CutDto> cutDtos = l.getCuts().stream()
                 .map(c -> ListingResponse.CutDto.builder()
@@ -138,6 +182,7 @@ public class ListingService {
                 .processingDate(l.getProcessingDate())
                 .postedAt(l.getPostedAt())
                 .fullyClaimedAt(l.getFullyClaimedAt())
+                .imageUrl(l.getImageUrl())
                 .farmerId(l.getFarmer().getId())
                 .farmerName(l.getFarmer().getFirstName() + " " + l.getFarmer().getLastName())
                 .farmerShopName(l.getFarmer().getShopName())

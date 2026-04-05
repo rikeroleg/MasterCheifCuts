@@ -20,6 +20,7 @@ public class ListingResponse {
     private double pricePerLb;
     private String sourceFarm;
     private String description;
+    private String imageUrl;
     private String zipCode;
     private ListingStatus status;
     private LocalDate processingDate;
