@@ -17,5 +17,6 @@ public class NotificationResponse {
     private String body;
     private boolean read;
     private Long listingId;
+    private String orderId;
     private LocalDateTime createdAt;
 }

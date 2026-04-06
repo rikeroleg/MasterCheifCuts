@@ -1,0 +1,157 @@
+package com.masterchefcuts.services;
+
+import com.masterchefcuts.dto.NotificationResponse;
+import com.masterchefcuts.enums.NotificationType;
+import com.masterchefcuts.enums.Role;
+import com.masterchefcuts.model.Notification;
+import com.masterchefcuts.model.Participant;
+import com.masterchefcuts.repositories.NotificationRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class NotificationServiceTest {
+
+    @Mock private NotificationRepository notificationRepository;
+
+    @InjectMocks private NotificationService notificationService;
+
+    private Participant recipient;
+    private Notification notification;
+
+    @BeforeEach
+    void setUp() {
+        recipient = Participant.builder()
+                .id("user-1").firstName("Alice").lastName("Smith")
+                .role(Role.BUYER).email("alice@example.com").password("pass")
+                .street("1 Main St").city("Town").state("TX").zipCode("12345")
+                .status("ACTIVE").approved(true).build();
+
+        notification = Notification.builder()
+                .id(1L).recipient(recipient)
+                .type(NotificationType.CUT_CLAIMED)
+                .icon("🛒").title("Cut claimed").body("You claimed Ribeye")
+                .listingId(1L).read(false).createdAt(LocalDateTime.now()).build();
+    }
+
+    // ── send ──────────────────────────────────────────────────────────────────
+
+    @Test
+    void send_savesNotificationWithCorrectFields() {
+        notificationService.send(recipient, NotificationType.CUT_CLAIMED,
+                "🛒", "Cut claimed", "You claimed Ribeye", 1L);
+
+        verify(notificationRepository).save(argThat(n ->
+                n.getRecipient().equals(recipient) &&
+                n.getType() == NotificationType.CUT_CLAIMED &&
+                n.getTitle().equals("Cut claimed") &&
+                n.getListingId().equals(1L)
+        ));
+    }
+
+    // ── getForRecipient ───────────────────────────────────────────────────────
+
+    @Test
+    void getForRecipient_returnsMappedDtos() {
+        when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc("user-1"))
+                .thenReturn(List.of(notification));
+
+        List<NotificationResponse> result = notificationService.getForRecipient("user-1");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo(1L);
+        assertThat(result.get(0).getTitle()).isEqualTo("Cut claimed");
+        assertThat(result.get(0).isRead()).isFalse();
+        assertThat(result.get(0).getListingId()).isEqualTo(1L);
+    }
+
+    @Test
+    void getForRecipient_returnsEmptyListWhenNone() {
+        when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc("user-1"))
+                .thenReturn(List.of());
+
+        assertThat(notificationService.getForRecipient("user-1")).isEmpty();
+    }
+
+    // ── getUnreadCount ────────────────────────────────────────────────────────
+
+    @Test
+    void getUnreadCount_returnsCorrectCount() {
+        when(notificationRepository.countByRecipientIdAndReadFalse("user-1")).thenReturn(3L);
+
+        assertThat(notificationService.getUnreadCount("user-1")).isEqualTo(3L);
+    }
+
+    // ── markRead ──────────────────────────────────────────────────────────────
+
+    @Test
+    void markRead_setsReadTrueAndSaves_whenRecipientMatches() {
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        notificationService.markRead(1L, "user-1");
+
+        assertThat(notification.isRead()).isTrue();
+        verify(notificationRepository).save(notification);
+    }
+
+    @Test
+    void markRead_doesNotSave_whenRecipientDoesNotMatch() {
+        when(notificationRepository.findById(1L)).thenReturn(Optional.of(notification));
+
+        notificationService.markRead(1L, "other-user");
+
+        assertThat(notification.isRead()).isFalse();
+        verify(notificationRepository, never()).save(notification);
+    }
+
+    @Test
+    void markRead_doesNothing_whenNotificationNotFound() {
+        when(notificationRepository.findById(99L)).thenReturn(Optional.empty());
+
+        notificationService.markRead(99L, "user-1");
+
+        verify(notificationRepository, never()).save(any());
+    }
+
+    // ── markAllRead ───────────────────────────────────────────────────────────
+
+    @Test
+    void markAllRead_callsRepositoryMarkAll() {
+        notificationService.markAllRead("user-1");
+
+        verify(notificationRepository).markAllReadByRecipientId("user-1");
+    }
+
+    // ── clearAll ──────────────────────────────────────────────────────────────
+
+    @Test
+    void clearAll_deletesAllNotificationsForRecipient() {
+        when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc("user-1"))
+                .thenReturn(List.of(notification));
+
+        notificationService.clearAll("user-1");
+
+        verify(notificationRepository).deleteAll(List.of(notification));
+    }
+
+    @Test
+    void clearAll_doesNotThrowWhenNoNotifications() {
+        when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc("user-1"))
+                .thenReturn(List.of());
+
+        assertThatCode(() -> notificationService.clearAll("user-1"))
+                .doesNotThrowAnyException();
+    }
+}

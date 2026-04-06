@@ -14,6 +14,8 @@ import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -61,17 +63,20 @@ public class ListingService {
     }
 
     @Transactional(readOnly = true)
-    public List<ListingResponse> getAll(String zipCode, String animalType) {
-        List<Listing> results;
-        if (animalType != null && !animalType.isBlank()) {
+    public List<ListingResponse> getAll(String zipCode, String animalType, String farmerId, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<Listing> results;
+        if (farmerId != null && !farmerId.isBlank()) {
+            results = listingRepository.findByFarmerIdOrderByPostedAtDesc(farmerId, pageable);
+        } else if (animalType != null && !animalType.isBlank()) {
             results = listingRepository.findByAnimalTypeAndStatusOrderByPostedAtDesc(
-                    AnimalType.fromString(animalType), ListingStatus.ACTIVE);
+                    AnimalType.fromString(animalType), ListingStatus.ACTIVE, pageable);
         } else if (zipCode != null && !zipCode.isBlank()) {
-            results = listingRepository.findByZipCodeAndStatusOrderByPostedAtDesc(zipCode, ListingStatus.ACTIVE);
+            results = listingRepository.findByZipCodeAndStatusOrderByPostedAtDesc(zipCode, ListingStatus.ACTIVE, pageable);
         } else {
-            results = listingRepository.findByStatusOrderByPostedAtDesc(ListingStatus.ACTIVE);
+            results = listingRepository.findByStatusOrderByPostedAtDesc(ListingStatus.ACTIVE, pageable);
         }
-        return results.stream().map(this::toDto).collect(Collectors.toList());
+        return results.getContent().stream().map(this::toDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

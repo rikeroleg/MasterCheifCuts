@@ -1,5 +1,6 @@
-﻿package com.masterchefcuts.model;
+package com.masterchefcuts.model;
 
+import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -53,4 +54,8 @@ public class Participant {
 
     private boolean emailVerified;
     private String verificationToken;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private NotificationPreference notificationPreference = NotificationPreference.ALL;
 }

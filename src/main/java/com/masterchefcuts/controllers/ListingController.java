@@ -29,8 +29,11 @@ public class ListingController {
     @GetMapping
     public ResponseEntity<List<ListingResponse>> getAll(
             @RequestParam(required = false) String zip,
-            @RequestParam(required = false) String animal) {
-        return ResponseEntity.ok(listingService.getAll(zip, animal));
+            @RequestParam(required = false) String animal,
+            @RequestParam(required = false) String farmerId,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(listingService.getAll(zip, animal, farmerId, page, size));
     }
 
     @GetMapping("/{id}")

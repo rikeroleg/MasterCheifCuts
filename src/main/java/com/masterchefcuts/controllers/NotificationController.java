@@ -1,5 +1,6 @@
 package com.masterchefcuts.controllers;
 
+import com.masterchefcuts.dto.NotificationPageResponse;
 import com.masterchefcuts.dto.NotificationResponse;
 import com.masterchefcuts.services.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,14 @@ public class NotificationController {
     @GetMapping
     public ResponseEntity<List<NotificationResponse>> getAll(@AuthenticationPrincipal String participantId) {
         return ResponseEntity.ok(notificationService.getForRecipient(participantId));
+    }
+
+    @GetMapping("/paged")
+    public ResponseEntity<NotificationPageResponse> getPaged(
+            @AuthenticationPrincipal String participantId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(notificationService.getForRecipientPaged(participantId, page, size));
     }
 
     @GetMapping("/unread-count")
