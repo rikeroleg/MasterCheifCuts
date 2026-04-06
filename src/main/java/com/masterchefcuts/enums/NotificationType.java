@@ -5,5 +5,11 @@ public enum NotificationType {
     LISTING_FULL,
     PROCESSING_SET,
     COMPLETE,
-    REQUEST_FULFILLED
+    REQUEST_FULFILLED,
+    // Order lifecycle notifications
+    ORDER_PAID,           // Notify farmer when buyer pays
+    ORDER_ACCEPTED,       // Notify buyer when farmer accepts
+    ORDER_PROCESSING,     // Notify buyer when farmer starts processing
+    ORDER_READY,          // Notify buyer when order is ready
+    ORDER_COMPLETED       // Notify farmer when buyer confirms receipt
 }

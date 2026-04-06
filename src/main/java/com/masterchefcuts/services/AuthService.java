@@ -159,6 +159,7 @@ public class AuthService {
                 .state(p.getState())
                 .zipCode(p.getZipCode())
                 .approved(p.isApproved())
+                .notificationPreference(p.getNotificationPreference())
                 .build();
     }
 }

@@ -42,6 +42,12 @@ public class AdminController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/users/{id}")
+    public ResponseEntity<Map<String, Object>> getUserDetail(@PathVariable String id) {
+        return ResponseEntity.ok(adminService.getUserDetail(id));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/admin/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(adminService.getStats());

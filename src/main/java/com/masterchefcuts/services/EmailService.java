@@ -1,4 +1,4 @@
-﻿package com.masterchefcuts.services;
+package com.masterchefcuts.services;
 
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;

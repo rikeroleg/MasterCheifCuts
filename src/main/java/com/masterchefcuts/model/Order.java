@@ -22,12 +22,22 @@ public class Order {
     @UuidGenerator
     @Column(name = "id", updatable = false, nullable = false)
     private String id;
+
+    @Column(name = "stripe_payment_intent_id", unique = true)
+    private String stripePaymentIntentId;
+
     private String participantId;
     private String orderDate;
+    private String paidAt;
     private String status;
+    private Long amountCents;
+    private String currency;
     private double totalAmount;
     private String items; // This could be a JSON string or a serialized list of items
     private String deliveryDate;
     private String notes;
+    private String paymentType; // FULL or DEPOSIT
+    private Long remainingAmountCents;
+    private String balancePaymentIntentId;
     
 }

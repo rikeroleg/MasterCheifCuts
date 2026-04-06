@@ -32,4 +32,9 @@ public class Claim {
 
     @Builder.Default
     private LocalDateTime claimedAt = LocalDateTime.now();
+
+    private LocalDateTime expiresAt;
+
+    @Builder.Default
+    private boolean paid = false;
 }
