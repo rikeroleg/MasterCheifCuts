@@ -35,3 +35,6 @@ build/
 ### Secrets ###
 src/main/resources/application-local.properties
 src/main/resources/application-aws.properties
+
+# Local secrets for Docker Compose
+.env
