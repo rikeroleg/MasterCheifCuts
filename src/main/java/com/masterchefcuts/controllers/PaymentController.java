@@ -29,16 +29,7 @@ public class PaymentController {
     public ResponseEntity<PaymentIntentResponse> createCartIntent(
             @AuthenticationPrincipal String buyerId,
             @RequestBody CartPaymentIntentRequest request) throws StripeException {
-        String paymentType = request.getPaymentType() != null ? request.getPaymentType() : "FULL";
-        return ResponseEntity.ok(paymentService.createCartIntent(buyerId, request.getCutIds(), paymentType));
-    }
-
-    @PreAuthorize("hasRole('BUYER')")
-    @PostMapping("/api/payments/balance-intent/{orderId}")
-    public ResponseEntity<PaymentIntentResponse> createBalanceIntent(
-            @AuthenticationPrincipal String buyerId,
-            @PathVariable String orderId) throws StripeException {
-        return ResponseEntity.ok(paymentService.createBalanceIntent(buyerId, orderId));
+        return ResponseEntity.ok(paymentService.createCartIntent(buyerId, request.getCutIds()));
     }
 
     @PostMapping(value = "/api/payments/webhook", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -46,6 +37,19 @@ public class PaymentController {
             @RequestBody String payload,
             @RequestHeader("Stripe-Signature") String stripeSignatureHeader) {
         paymentService.handleWebhook(payload, stripeSignatureHeader);
+        return ResponseEntity.ok("ok");
+    }
+
+    /**
+     * Receives Stripe Connect account.updated events.
+     * Configure this as a separate webhook endpoint in the Stripe dashboard
+     * pointing to /api/payments/connect-webhook.
+     */
+    @PostMapping(value = "/api/payments/connect-webhook", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> handleStripeConnectWebhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String stripeSignatureHeader) {
+        paymentService.handleAccountWebhook(payload, stripeSignatureHeader);
         return ResponseEntity.ok("ok");
     }
 }

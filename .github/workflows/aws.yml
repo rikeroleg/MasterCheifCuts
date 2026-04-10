@@ -31,14 +31,12 @@ on:
     branches: [ "main" ]
 
 env:
-  AWS_REGION: MY_AWS_REGION                   # set this to your preferred AWS region, e.g. us-west-1
-  ECR_REPOSITORY: MY_ECR_REPOSITORY           # set this to your Amazon ECR repository name
-  ECS_SERVICE: MY_ECS_SERVICE                 # set this to your Amazon ECS service name
-  ECS_CLUSTER: MY_ECS_CLUSTER                 # set this to your Amazon ECS cluster name
-  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # set this to the path to your Amazon ECS task definition
-                                               # file, e.g. .aws/task-definition.json
-  CONTAINER_NAME: MY_CONTAINER_NAME           # set this to the name of the container in the
-                                               # containerDefinitions section of your task definition
+  AWS_REGION: ${{ vars.AWS_REGION }}                  # set in GitHub repo/environment variables
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}          # set in GitHub repo/environment variables
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}                # set in GitHub repo/environment variables
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}                # set in GitHub repo/environment variables
+  ECS_TASK_DEFINITION: .aws/task-definition.json      # committed to repo at this path
+  CONTAINER_NAME: masterchefcuts-server               # matches containerDefinitions[].name in task def
 
 permissions:
   contents: read
@@ -92,3 +90,12 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+
+    - name: Trigger E2E smoke tests
+      env:
+        GH_TOKEN: ${{ secrets.GH_PAT_E2E }}
+      run: |
+        gh workflow run e2e.yml \
+          --repo ${{ github.repository_owner }}/masterchefcuts-e2e \
+          --field baseUrl=https://api.masterchefcuts.com \
+          || echo "⚠️  E2E trigger skipped — set GH_PAT_E2E secret to enable cross-repo dispatch"

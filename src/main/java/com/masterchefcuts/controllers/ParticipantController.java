@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/participants")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class ParticipantController {
 

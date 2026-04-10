@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
+import com.masterchefcuts.dto.CutRequest;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.Role;
@@ -78,7 +79,7 @@ class ListingControllerTest {
 
     @Test
     void getAll_noFilters_returns200WithList() throws Exception {
-        when(listingService.getAll(null, null, null, 0, 20)).thenReturn(List.of(sampleListing));
+        when(listingService.getAll(null, null, null, null, 0, 20)).thenReturn(List.of(sampleListing));
 
         mockMvc.perform(get("/api/listings"))
                 .andExpect(status().isOk())
@@ -87,7 +88,7 @@ class ListingControllerTest {
 
     @Test
     void getAll_withZipAndAnimal_passesBothParams() throws Exception {
-        when(listingService.getAll("12345", "BEEF", null, 0, 20)).thenReturn(List.of(sampleListing));
+        when(listingService.getAll("12345", "BEEF", null, null, 0, 20)).thenReturn(List.of(sampleListing));
 
         mockMvc.perform(get("/api/listings").param("zip", "12345").param("animal", "BEEF"))
                 .andExpect(status().isOk());
@@ -200,7 +201,9 @@ class ListingControllerTest {
         req.setWeightLbs(500);
         req.setPricePerLb(10.0);
         req.setZipCode("12345");
-        req.setCutLabels(List.of("Ribeye", "Brisket"));
+        CutRequest cr1 = new CutRequest(); cr1.setLabel("Ribeye");
+        CutRequest cr2 = new CutRequest(); cr2.setLabel("Brisket");
+        req.setCuts(List.of(cr1, cr2));
         return req;
     }
 }

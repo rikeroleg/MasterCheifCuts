@@ -13,4 +13,5 @@ public interface ParticipantRepo extends JpaRepository<Participant, String> {
 
     java.util.Optional<Participant> findByResetToken(String resetToken);
     java.util.Optional<Participant> findByVerificationToken(String verificationToken);
+    java.util.Optional<Participant> findByStripeAccountId(String stripeAccountId);
 }

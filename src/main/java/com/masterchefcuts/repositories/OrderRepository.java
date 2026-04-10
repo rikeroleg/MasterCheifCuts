@@ -15,8 +15,6 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     Optional<Order> findByStripePaymentIntentId(String stripePaymentIntentId);
 
-    Optional<Order> findByBalancePaymentIntentId(String balancePaymentIntentId);
-
     /**
      * Find order by payment intent ID with pessimistic write lock to prevent race conditions
      */
@@ -24,20 +22,15 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     @Query("SELECT o FROM Order o WHERE o.stripePaymentIntentId = :intentId")
     Optional<Order> findByStripePaymentIntentIdForUpdate(String intentId);
 
-    /**
-     * Find order by balance payment intent ID with pessimistic write lock
-     */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT o FROM Order o WHERE o.balancePaymentIntentId = :intentId")
-    Optional<Order> findByBalancePaymentIntentIdForUpdate(String intentId);
-
     List<Order> findByParticipantIdOrderByOrderDateDesc(String participantId);
+
+    List<Order> findAllByOrderByOrderDateDesc();
 
     /**
      * Check if an order already exists for the given participant and cut IDs (to prevent duplicates)
      */
     @Query("SELECT COUNT(o) > 0 FROM Order o WHERE o.participantId = :participantId " +
-           "AND o.status IN ('PENDING_PAYMENT', 'PAID', 'DEPOSIT_PAID') " +
+           "AND o.status IN ('PENDING_PAYMENT', 'PAID') " +
            "AND o.items LIKE %:cutIdPattern%")
     boolean existsPendingOrderWithCut(String participantId, String cutIdPattern);
 }

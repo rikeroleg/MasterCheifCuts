@@ -40,6 +40,7 @@ public class ListingResponse {
     public static class CutDto {
         private Long id;
         private String label;
+        private Double weightLbs;
         private boolean claimed;
         private String claimedByName;
         private LocalDateTime claimedAt;

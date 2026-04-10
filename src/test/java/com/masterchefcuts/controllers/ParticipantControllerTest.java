@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
+import com.masterchefcuts.repositories.ParticipantRepo;
+import com.masterchefcuts.services.AuthService;
 import com.masterchefcuts.services.ParticipantService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,8 @@ class ParticipantControllerTest {
 
     @MockBean ParticipantService participantService;
     @MockBean JwtUtil jwtUtil;
+    @MockBean ParticipantRepo participantRepo;
+    @MockBean AuthService authService;
 
     @Test
     void add_returns200SuccessMessage() throws Exception {

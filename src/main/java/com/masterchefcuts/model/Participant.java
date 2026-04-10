@@ -58,4 +58,12 @@ public class Participant {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private NotificationPreference notificationPreference = NotificationPreference.ALL;
+
+    // Stripe Connect — farmer payout account
+    @Column(name = "stripe_account_id")
+    private String stripeAccountId;
+
+    @Builder.Default
+    @Column(name = "stripe_onboarding_complete")
+    private Boolean stripeOnboardingComplete = false;
 }
