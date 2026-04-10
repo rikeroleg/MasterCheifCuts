@@ -37,12 +37,18 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal String participantId) {
+        if (participantId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(authService.getMe(participantId));
     }
 
     @PatchMapping("/me")
     public ResponseEntity<AuthResponse> updateMe(@AuthenticationPrincipal String participantId,
                                                   @RequestBody RegisterRequest req) {
+        if (participantId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(authService.updateProfile(participantId, req));
     }
 

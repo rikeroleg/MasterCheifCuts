@@ -28,6 +28,7 @@ public class OrderService {
     private final ParticipantRepo participantRepo;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final AuditService auditService;
 
     /**
      * Get all orders for listings owned by this farmer
@@ -41,7 +42,7 @@ public class OrderService {
                     String status = order.getStatus();
                     if (status == null) return false;
                     Set<String> visibleStatuses = Set.of(
-                        "PAID", "DEPOSIT_PAID", "ACCEPTED", "PROCESSING", "READY", "COMPLETED", "SHIPPED"
+                        "PAID", "ACCEPTED", "PROCESSING", "READY", "COMPLETED"
                     );
                     if (!visibleStatuses.contains(status.toUpperCase())) return false;
                     
@@ -61,12 +62,11 @@ public class OrderService {
     private int getStatusPriority(String status) {
         if (status == null) return 99;
         return switch (status.toUpperCase()) {
-            case "PAID", "DEPOSIT_PAID" -> 1;  // Needs attention first
+            case "PAID" -> 1;  // Needs attention first
             case "ACCEPTED" -> 2;
             case "PROCESSING" -> 3;
             case "READY" -> 4;
-            case "SHIPPED" -> 5;
-            case "COMPLETED" -> 6;
+            case "COMPLETED" -> 5;
             default -> 99;
         };
     }
@@ -123,6 +123,8 @@ public class OrderService {
                 "Status changed to " + targetStatus.name() + " by farmer at " + LocalDateTime.now()));
         orderRepository.save(order);
 
+        auditService.log(farmerId, "ORDER_STATUS_CHANGED", orderId);
+
         // Send notification to buyer
         notifyBuyerOfStatusChange(order, targetStatus);
 
@@ -133,11 +135,10 @@ public class OrderService {
         if (current == null) return false;
         
         return switch (current.toUpperCase()) {
-            case "PAID", "DEPOSIT_PAID" -> target == OrderStatus.ACCEPTED;
+            case "PAID" -> target == OrderStatus.ACCEPTED;
             case "ACCEPTED" -> target == OrderStatus.PROCESSING;
             case "PROCESSING" -> target == OrderStatus.READY;
             case "READY" -> target == OrderStatus.COMPLETED;
-            case "SHIPPED" -> target == OrderStatus.ACCEPTED; // Allow shipped orders to be accepted
             default -> false;
         };
     }
@@ -206,6 +207,8 @@ public class OrderService {
         order.setNotes(appendNote(order.getNotes(), 
                 "Receipt confirmed by buyer at " + LocalDateTime.now()));
         orderRepository.save(order);
+
+        auditService.log(buyerId, "ORDER_CONFIRMED", orderId);
 
         // Notify farmer
         notifyFarmerOfCompletion(order);

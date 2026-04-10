@@ -36,8 +36,11 @@ public class Order {
     private String items; // This could be a JSON string or a serialized list of items
     private String deliveryDate;
     private String notes;
-    private String paymentType; // FULL or DEPOSIT
-    private Long remainingAmountCents;
-    private String balancePaymentIntentId;
-    
+
+    // Delivery address snapshot (copied from buyer at order creation time)
+    private String deliveryStreet;
+    private String deliveryCity;
+    private String deliveryState;
+    private String deliveryZip;
+
 }

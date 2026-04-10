@@ -13,13 +13,13 @@ services:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "Admin@12345"
+      MSSQL_SA_PASSWORD: ${DB_PASS}
     ports:
       - "1433:1433"
     volumes:
       - sqlserver-data:/var/opt/mssql
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "Admin@12345", "-Q", "SELECT 1", "-b", "-C", "-o", "/dev/null"]
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${DB_PASS}", "-Q", "SELECT 1", "-b", "-C", "-o", "/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,7 +30,7 @@ services:
     depends_on:
       sqlserver:
         condition: service_healthy
-    command: /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "Admin@12345" -C -Q "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name='olegtest') CREATE DATABASE olegtest"
+    command: /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P ${DB_PASS} -C -Q "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name='olegtest') CREATE DATABASE olegtest"
     restart: "no"
 
   server:
@@ -42,8 +42,9 @@ services:
       SPRING_PROFILES_ACTIVE: local
       DB_HOST: sqlserver
       DB_USER: sa
-      DB_PASS: "Admin@12345"
-      DB_NAME: olegtest
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME:-olegtest}
+      JWT_SECRET: ${JWT_SECRET}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
     depends_on:

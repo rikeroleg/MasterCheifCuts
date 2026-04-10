@@ -2,6 +2,7 @@ package com.masterchefcuts.services;
 
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
+import com.masterchefcuts.dto.CutRequest;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.NotificationType;
@@ -18,6 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -102,20 +106,22 @@ class ListingServiceTest {
 
     @Test
     void getAll_noFilters_returnsActiveListings() {
-        when(listingRepository.findByStatusOrderByPostedAtDesc(ListingStatus.ACTIVE))
-                .thenReturn(List.of(listing));
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(listingRepository.findWithFilters(null, null, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(listing)));
 
-        List<ListingResponse> result = listingService.getAll(null, null, null, 0, 20);
+        List<ListingResponse> result = listingService.getAll(null, null, null, null, 0, 20);
 
         assertThat(result).hasSize(1);
     }
 
     @Test
     void getAll_byAnimalType_filtersCorrectly() {
-        when(listingRepository.findByAnimalTypeAndStatusOrderByPostedAtDesc(AnimalType.BEEF, ListingStatus.ACTIVE))
-                .thenReturn(List.of(listing));
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(listingRepository.findWithFilters("BEEF", null, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(listing)));
 
-        List<ListingResponse> result = listingService.getAll(null, "BEEF", null, 0, 20);
+        List<ListingResponse> result = listingService.getAll(null, "BEEF", null, null, 0, 20);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getAnimalType()).isEqualTo(AnimalType.BEEF);
@@ -123,10 +129,11 @@ class ListingServiceTest {
 
     @Test
     void getAll_byZipCode_filtersCorrectly() {
-        when(listingRepository.findByZipCodeAndStatusOrderByPostedAtDesc("12345", ListingStatus.ACTIVE))
-                .thenReturn(List.of(listing));
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(listingRepository.findWithFilters(null, null, "12345", pageable))
+                .thenReturn(new PageImpl<>(List.of(listing)));
 
-        List<ListingResponse> result = listingService.getAll("12345", null, null, 0, 20);
+        List<ListingResponse> result = listingService.getAll("12345", null, null, null, 0, 20);
 
         assertThat(result).hasSize(1);
     }
@@ -339,7 +346,9 @@ class ListingServiceTest {
         req.setWeightLbs(500);
         req.setPricePerLb(10.0);
         req.setZipCode("12345");
-        req.setCutLabels(List.of("Ribeye", "Brisket"));
+        CutRequest cr1 = new CutRequest(); cr1.setLabel("Ribeye");
+        CutRequest cr2 = new CutRequest(); cr2.setLabel("Brisket");
+        req.setCuts(List.of(cr1, cr2));
         return req;
     }
 }

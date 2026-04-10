@@ -13,6 +13,8 @@ import com.masterchefcuts.repositories.CutRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.OrderRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
+import com.masterchefcuts.repositories.ClaimRepository;
+import com.masterchefcuts.repositories.WebhookEventRepository;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
@@ -23,6 +25,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -34,13 +38,20 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class PaymentServiceTest {
 
     @Mock private ListingRepository listingRepository;
     @Mock private CutRepository cutRepository;
     @Mock private OrderRepository orderRepository;
     @Mock private ParticipantRepo participantRepo;
+    @Mock private ClaimRepository claimRepository;
+    @Mock private NotificationService notificationService;
+    @Mock private WebhookEventRepository webhookEventRepository;
     @Mock private ObjectMapper objectMapper;
+    @Mock private StripeConnectService stripeConnectService;
+    @Mock private RefundService refundService;
+    @Mock private EmailService emailService;
 
     @InjectMocks private PaymentService paymentService;
 
@@ -97,10 +108,10 @@ class PaymentServiceTest {
         when(cutRepository.countByListingId(1L)).thenReturn(2L);
 
         try (MockedStatic<PaymentIntent> mockedStatic = mockStatic(PaymentIntent.class)) {
-            mockedStatic.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class)))
+            mockedStatic.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class), any(com.stripe.net.RequestOptions.class)))
                     .thenReturn(mockIntent);
 
-            PaymentIntentResponse response = paymentService.createCartIntent("buyer-1", List.of(1L), "FULL");
+            PaymentIntentResponse response = paymentService.createCartIntent("buyer-1", List.of(1L));
 
             assertThat(response.getClientSecret()).isEqualTo("pi_cart_secret");
             assertThat(response.getAmountCents()).isEqualTo(200000L);

@@ -2,6 +2,7 @@ package com.masterchefcuts.controllers;
 
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
+import com.masterchefcuts.dto.ListingUpdateRequest;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import com.masterchefcuts.services.ListingService;
@@ -31,9 +32,10 @@ public class ListingController {
             @RequestParam(required = false) String zip,
             @RequestParam(required = false) String animal,
             @RequestParam(required = false) String farmerId,
+            @RequestParam(required = false) Double maxPrice,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(listingService.getAll(zip, animal, farmerId, page, size));
+        return ResponseEntity.ok(listingService.getAll(zip, animal, farmerId, maxPrice, page, size));
     }
 
     @GetMapping("/{id}")
@@ -59,12 +61,31 @@ public class ListingController {
     }
 
     @PatchMapping("/{id}/processing-date")
+    @PutMapping("/{id}/processing-date")
     @PreAuthorize("hasRole('FARMER')")
     public ResponseEntity<ListingResponse> setProcessingDate(
             @AuthenticationPrincipal String farmerId,
             @PathVariable Long id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(listingService.setProcessingDate(id, farmerId, date));
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('FARMER')")
+    public ResponseEntity<ListingResponse> updateListing(
+            @AuthenticationPrincipal String farmerId,
+            @PathVariable Long id,
+            @RequestBody ListingUpdateRequest req) {
+        return ResponseEntity.ok(listingService.updateListing(id, farmerId, req));
+    }
+
+    @PutMapping("/{id}/close")
+    @PreAuthorize("hasRole('FARMER')")
+    public ResponseEntity<Void> closeListing(
+            @AuthenticationPrincipal String farmerId,
+            @PathVariable Long id) {
+        listingService.closeListing(id, farmerId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping(value = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -25,6 +25,8 @@ public class Cut {
     @Column(nullable = false)
     private String label;
 
+    private Double weightLbs;
+
     @Builder.Default
     private boolean claimed = false;
 

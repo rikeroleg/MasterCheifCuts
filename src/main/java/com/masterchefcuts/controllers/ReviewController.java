@@ -24,6 +24,19 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getReviewsForListing(listingId));
     }
 
+    @GetMapping("/api/reviews/farmer/{farmerId}")
+    public ResponseEntity<List<ReviewResponse>> getFarmerReviews(@PathVariable String farmerId) {
+        return ResponseEntity.ok(reviewService.getReviewsForFarmer(farmerId));
+    }
+
+    @GetMapping("/api/reviews/has-reviewed")
+    public ResponseEntity<Boolean> hasReviewed(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam Long listingId) {
+        if (userDetails == null) return ResponseEntity.ok(false);
+        return ResponseEntity.ok(reviewService.hasReviewed(userDetails.getUsername(), listingId));
+    }
+
     @PreAuthorize("hasRole('BUYER')")
     @PostMapping("/api/reviews")
     public ResponseEntity<ReviewResponse> createReview(

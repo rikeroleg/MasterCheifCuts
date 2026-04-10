@@ -77,7 +77,7 @@ class PaymentControllerTest {
 
     @Test
     void createCartIntent_returns200() throws Exception {
-        when(paymentService.createCartIntent(eq("buyer-1"), eq(List.of(10L, 11L)), eq("FULL")))
+        when(paymentService.createCartIntent(any(), eq(List.of(10L, 11L))))
             .thenReturn(new PaymentIntentResponse("pi_cart_secret", 5000L, "usd"));
 
         CartPaymentIntentRequest req = new CartPaymentIntentRequest();

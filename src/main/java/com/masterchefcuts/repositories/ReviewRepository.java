@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByListingIdOrderByCreatedAtDesc(Long listingId);
+    List<Review> findByListingFarmerIdOrderByCreatedAtDesc(String farmerId);
     boolean existsByBuyerIdAndListingId(String buyerId, Long listingId);
     Optional<Review> findByBuyerIdAndListingId(String buyerId, Long listingId);
 }

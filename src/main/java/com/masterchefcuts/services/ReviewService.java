@@ -54,6 +54,15 @@ public class ReviewService {
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    public List<ReviewResponse> getReviewsForFarmer(String farmerId) {
+        return reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc(farmerId)
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public boolean hasReviewed(String buyerId, Long listingId) {
+        return reviewRepository.existsByBuyerIdAndListingId(buyerId, listingId);
+    }
+
     private ReviewResponse toDto(Review r) {
         return ReviewResponse.builder()
                 .id(r.getId())

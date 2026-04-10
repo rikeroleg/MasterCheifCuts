@@ -200,7 +200,7 @@ class ClaimServiceTest {
     void getClaimResponsesForBuyer_mapsToDtoCorrectly() {
         Claim claim = Claim.builder().id(1L).buyer(buyer).listing(listing).cut(cut)
                 .claimedAt(LocalDateTime.now()).build();
-        when(claimRepository.findByBuyerIdOrderByClaimedAtDesc("buyer-1")).thenReturn(List.of(claim));
+        when(claimRepository.findClaimSummariesByBuyerId("buyer-1")).thenReturn(List.of(claim));
 
         List<ClaimResponse> result = claimService.getClaimResponsesForBuyer("buyer-1");
 
