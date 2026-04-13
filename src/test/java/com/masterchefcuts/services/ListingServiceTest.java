@@ -22,7 +22,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import static org.mockito.ArgumentMatchers.any;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
@@ -106,8 +110,7 @@ class ListingServiceTest {
 
     @Test
     void getAll_noFilters_returnsActiveListings() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        when(listingRepository.findWithFilters(null, null, null, pageable))
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(listing)));
 
         List<ListingResponse> result = listingService.getAll(null, null, null, null, 0, 20);
@@ -117,8 +120,7 @@ class ListingServiceTest {
 
     @Test
     void getAll_byAnimalType_filtersCorrectly() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        when(listingRepository.findWithFilters("BEEF", null, null, pageable))
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(listing)));
 
         List<ListingResponse> result = listingService.getAll(null, "BEEF", null, null, 0, 20);
@@ -129,8 +131,7 @@ class ListingServiceTest {
 
     @Test
     void getAll_byZipCode_filtersCorrectly() {
-        PageRequest pageable = PageRequest.of(0, 20);
-        when(listingRepository.findWithFilters(null, null, "12345", pageable))
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(listing)));
 
         List<ListingResponse> result = listingService.getAll("12345", null, null, null, 0, 20);

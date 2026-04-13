@@ -20,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -90,16 +92,27 @@ public class ListingService {
     @Transactional(readOnly = true)
     public List<ListingResponse> getAll(String zipCode, String animalType, String farmerId,
                                         Double maxPricePerLb, int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size);
         if (farmerId != null && !farmerId.isBlank()) {
-            return listingRepository.findByFarmerIdOrderByPostedAtDesc(farmerId, pageable)
+            return listingRepository.findByFarmerIdOrderByPostedAtDesc(farmerId, PageRequest.of(page, size))
                     .getContent().stream().map(this::toDto).collect(Collectors.toList());
         }
-        // All other cases go through the combined optional-filter query
-        String animalTypeStr = (animalType != null && !animalType.isBlank())
-                ? animalType.toUpperCase() : null;
-        String zipStr = (zipCode != null && !zipCode.isBlank()) ? zipCode : null;
-        return listingRepository.findWithFilters(animalTypeStr, maxPricePerLb, zipStr, pageable)
+
+        Specification<Listing> spec = Specification.where(
+                (root, query, cb) -> cb.equal(root.get("status"), ListingStatus.ACTIVE));
+
+        if (animalType != null && !animalType.isBlank()) {
+            AnimalType at = AnimalType.fromString(animalType);
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("animalType"), at));
+        }
+        if (maxPricePerLb != null) {
+            spec = spec.and((root, query, cb) -> cb.le(root.get("pricePerLb"), maxPricePerLb));
+        }
+        if (zipCode != null && !zipCode.isBlank()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("zipCode"), zipCode));
+        }
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedAt"));
+        return listingRepository.findAll(spec, pageable)
                 .getContent().stream().map(this::toDto).collect(Collectors.toList());
     }
 
