@@ -45,7 +45,6 @@ build/
 ### Secrets ###
 src/main/resources/application-local.properties
 src/main/resources/application-local-secrets.properties
-src/main/resources/application-prod.properties
 # Guard against stale profile files from renames
 src/main/resources/application-dev.properties
 src/main/resources/application-aws.properties
