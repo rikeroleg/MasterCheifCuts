@@ -72,6 +72,7 @@ jobs:
             --region "${GCP_REGION}" \
             --project "${GCP_PROJECT_ID}" \
             --service-account "${CLOUD_RUN_SERVICE_ACCOUNT}" \
+            --execution-environment gen2 \
             --add-cloudsql-instances "${CLOUD_SQL_INSTANCE}" \
             --port 8081 \
             --allow-unauthenticated \
