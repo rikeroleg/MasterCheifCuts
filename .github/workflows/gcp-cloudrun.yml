@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      GCP_DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT != '' && vars.GCP_DEPLOYER_SERVICE_ACCOUNT || secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOYER_SERVICE_ACCOUNT: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
 
     steps:
       - name: Checkout
@@ -75,7 +75,7 @@ jobs:
             --add-cloudsql-instances "${CLOUD_SQL_INSTANCE}" \
             --port 8081 \
             --allow-unauthenticated \
-            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,gcp,CLOUD_SQL_INSTANCE=${CLOUD_SQL_INSTANCE}" \
+            --update-env-vars "^,^SPRING_PROFILES_ACTIVE=prod,gcp^,^CLOUD_SQL_INSTANCE=${CLOUD_SQL_INSTANCE}" \
             --set-secrets "JWT_SECRET=JWT_SECRET:latest,DB_NAME=DB_NAME:latest,DB_USER=DB_USER:latest,DB_PASS=DB_PASS:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,MAIL_HOST=MAIL_HOST:latest,MAIL_PORT=MAIL_PORT:latest,MAIL_USER=MAIL_USER:latest,MAIL_PASS=MAIL_PASS:latest,MAIL_FROM=MAIL_FROM:latest,STRIPE_CONNECT_RETURN_URL=STRIPE_CONNECT_RETURN_URL:latest,STRIPE_CONNECT_REFRESH_URL=STRIPE_CONNECT_REFRESH_URL:latest,GCS_BUCKET=GCS_BUCKET:latest,GCP_PROJECT_ID=GCP_PROJECT_ID:latest" \
             --quiet
 
