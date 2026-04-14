@@ -73,6 +73,7 @@ jobs:
             --project "${GCP_PROJECT_ID}" \
             --service-account "${CLOUD_RUN_SERVICE_ACCOUNT}" \
             --execution-environment gen2 \
+            --clear-cloudsql-instances \
             --port 8081 \
             --allow-unauthenticated \
             --update-env-vars "^;^SPRING_PROFILES_ACTIVE=prod,gcp;CLOUD_SQL_INSTANCE=${CLOUD_SQL_INSTANCE}" \
