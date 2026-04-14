@@ -12,4 +12,6 @@ public interface ParticipantRepo extends JpaRepository<Participant, String> {
     boolean existsByEmail(String email);
 
     java.util.Optional<Participant> findByResetToken(String resetToken);
+    java.util.Optional<Participant> findByVerificationToken(String verificationToken);
+    java.util.Optional<Participant> findByStripeAccountId(String stripeAccountId);
 }

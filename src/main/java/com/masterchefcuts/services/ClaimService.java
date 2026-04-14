@@ -60,6 +60,7 @@ public class ClaimService {
                 .buyer(buyer)
                 .listing(listing)
                 .cut(cut)
+                .expiresAt(LocalDateTime.now().plusHours(24))
                 .build());
 
         String buyerName = buyer.getFirstName() + " " + buyer.getLastName();
@@ -73,12 +74,16 @@ public class ClaimService {
                 listing.getId()
         );
 
+        String farmerDisplay = listing.getFarmer().getShopName() != null && !listing.getFarmer().getShopName().isBlank()
+                ? listing.getFarmer().getShopName()
+                : listing.getFarmer().getFirstName() + " " + listing.getFarmer().getLastName();
+
         notificationService.send(
                 buyer,
                 NotificationType.CUT_CLAIMED,
                 "✅",
                 "Cut claimed successfully",
-                "You claimed the " + cut.getLabel() + " cut from " + listing.getFarmer().getShopName() + ".",
+                "You claimed the " + cut.getLabel() + " cut from " + farmerDisplay + ".",
                 listing.getId()
         );
 
@@ -113,7 +118,7 @@ public class ClaimService {
                         NotificationType.LISTING_FULL,
                         "🎉",
                         "Your animal is fully claimed!",
-                        "The " + listing.getBreed() + " from " + listing.getFarmer().getShopName()
+                        "The " + listing.getBreed() + " from " + farmerDisplay
                                 + " is fully claimed. The farmer will set a processing date soon.",
                         listing.getId()
                 );
@@ -131,7 +136,7 @@ public class ClaimService {
     }
 
     public List<com.masterchefcuts.dto.ClaimResponse> getClaimResponsesForBuyer(String buyerId) {
-        return claimRepository.findByBuyerIdOrderByClaimedAtDesc(buyerId).stream()
+                return claimRepository.findClaimSummariesByBuyerId(buyerId).stream()
                 .map(c -> com.masterchefcuts.dto.ClaimResponse.builder()
                         .id(c.getId())
                         .listingId(c.getListing().getId())
@@ -143,6 +148,8 @@ public class ClaimService {
                         .cutId(c.getCut().getId())
                         .cutLabel(c.getCut().getLabel())
                         .claimedAt(c.getClaimedAt())
+                        .expiresAt(c.getExpiresAt())
+                        .paid(c.isPaid())
                         .build())
                 .collect(java.util.stream.Collectors.toList());
     }

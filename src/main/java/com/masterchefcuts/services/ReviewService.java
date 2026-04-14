@@ -43,7 +43,7 @@ public class ReviewService {
                 .buyer(buyer)
                 .listing(listing)
                 .rating(req.getRating())
-                .comment(req.getComment())
+                .comment(stripHtml(req.getComment()))
                 .build());
 
         return toDto(review);
@@ -52,6 +52,20 @@ public class ReviewService {
     public List<ReviewResponse> getReviewsForListing(Long listingId) {
         return reviewRepository.findByListingIdOrderByCreatedAtDesc(listingId)
                 .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public List<ReviewResponse> getReviewsForFarmer(String farmerId) {
+        return reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc(farmerId)
+                .stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    public boolean hasReviewed(String buyerId, Long listingId) {
+        return reviewRepository.existsByBuyerIdAndListingId(buyerId, listingId);
+    }
+
+    private String stripHtml(String input) {
+        if (input == null) return "";
+        return input.replaceAll("<[^>]*>", "").trim();
     }
 
     private ReviewResponse toDto(Review r) {

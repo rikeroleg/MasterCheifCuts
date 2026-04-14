@@ -1,7 +1,9 @@
 package com.masterchefcuts.controllers;
 
+import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.services.AdminService;
+import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -42,8 +44,61 @@ public class AdminController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/users/{id}")
+    public ResponseEntity<Map<String, Object>> getUserDetail(@PathVariable String id) {
+        return ResponseEntity.ok(adminService.getUserDetail(id));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/admin/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         return ResponseEntity.ok(adminService.getStats());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/orders")
+    public ResponseEntity<List<Order>> getAllOrders() {
+        return ResponseEntity.ok(adminService.getAllOrders());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/api/admin/orders/{id}/refund")
+    public ResponseEntity<Order> refundOrder(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) throws StripeException {
+        String reason = body != null ? body.getOrDefault("reason", "Admin-initiated refund") : "Admin-initiated refund";
+        return ResponseEntity.ok(adminService.issueRefund(id, reason));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/financials/summary")
+    public ResponseEntity<Map<String, Object>> getFinancialSummary(
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        return ResponseEntity.ok(adminService.getFinancialSummary(from, to));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/financials/orders")
+    public ResponseEntity<List<Map<String, Object>>> getFinancialOrders(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to) {
+        return ResponseEntity.ok(adminService.getFinancialOrders(status, from, to));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/comments")
+    public ResponseEntity<Map<String, Object>> getComments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        return ResponseEntity.ok(adminService.getCommentsPaged(page, size));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/api/admin/comments/{id}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
+        adminService.adminDeleteComment(id);
+        return ResponseEntity.noContent().build();
     }
 }

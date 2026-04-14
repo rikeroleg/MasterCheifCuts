@@ -1,0 +1,84 @@
+name: Deploy to Google Cloud Run
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  ARTIFACT_REGISTRY_REPO: ${{ vars.ARTIFACT_REGISTRY_REPO }}
+  CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+  CLOUD_RUN_SERVICE_ACCOUNT: ${{ vars.CLOUD_RUN_SERVICE_ACCOUNT }}
+  CLOUD_SQL_INSTANCE: ${{ vars.CLOUD_SQL_INSTANCE }}
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ env.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        id: build-image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/masterchefcuts-server:${IMAGE_TAG}"
+          docker build -t "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          gcloud run deploy "${CLOUD_RUN_SERVICE}" \
+            --image "${{ steps.build-image.outputs.image }}" \
+            --region "${GCP_REGION}" \
+            --project "${GCP_PROJECT_ID}" \
+            --service-account "${CLOUD_RUN_SERVICE_ACCOUNT}" \
+            --add-cloudsql-instances "${CLOUD_SQL_INSTANCE}" \
+            --port 8081 \
+            --allow-unauthenticated \
+            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,gcp,CLOUD_SQL_INSTANCE=${CLOUD_SQL_INSTANCE}" \
+            --set-secrets "JWT_SECRET=JWT_SECRET:latest,DB_NAME=DB_NAME:latest,DB_USER=DB_USER:latest,DB_PASS=DB_PASS:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,MAIL_HOST=MAIL_HOST:latest,MAIL_PORT=MAIL_PORT:latest,MAIL_USER=MAIL_USER:latest,MAIL_PASS=MAIL_PASS:latest,MAIL_FROM=MAIL_FROM:latest,STRIPE_CONNECT_RETURN_URL=STRIPE_CONNECT_RETURN_URL:latest,STRIPE_CONNECT_REFRESH_URL=STRIPE_CONNECT_REFRESH_URL:latest,GCS_BUCKET=GCS_BUCKET:latest,GCP_PROJECT_ID=GCP_PROJECT_ID:latest" \
+            --quiet
+
+      - name: Capture service URL
+        id: service-url
+        run: |
+          URL=$(gcloud run services describe "${CLOUD_RUN_SERVICE}" \
+            --region "${GCP_REGION}" \
+            --project "${GCP_PROJECT_ID}" \
+            --format='value(status.url)')
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger E2E smoke tests
+        if: env.GH_TOKEN != ''
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_E2E }}
+        run: |
+          gh workflow run e2e.yml \
+            --repo ${{ github.repository_owner }}/masterchefcuts-e2e \
+            --field baseUrl=${{ steps.service-url.outputs.url }} \
+            || echo "E2E trigger skipped or failed"

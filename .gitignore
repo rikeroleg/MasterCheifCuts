@@ -4,6 +4,16 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Java build artifacts ###
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+!.mvn/wrapper/maven-wrapper.jar
+hs_err_pid*
+replay_pid*
+
 ### STS ###
 .apt_generated
 .classpath
@@ -31,3 +41,46 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets ###
+src/main/resources/application-local.properties
+src/main/resources/application-local-secrets.properties
+src/main/resources/application-prod.properties
+# Guard against stale profile files from renames
+src/main/resources/application-dev.properties
+src/main/resources/application-aws.properties
+
+# Local secrets for Docker Compose
+.env
+
+### Node (package-lock.json has no place in a Java-only project) ###
+package-lock.json
+node_modules/
+
+### OS ###
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+### Logs ###
+*.log
+logs/
+
+### Temp / editor backups ###
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+### Maven ###
+.mvn/timing.properties
+
+### AWS local config ###
+.aws/
+*~
+*.orig
+
+### CI/CD generated files ###
+.github/workflows/GCP_DEPLOYMENT_SETUP.md

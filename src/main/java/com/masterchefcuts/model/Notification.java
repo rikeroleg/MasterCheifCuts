@@ -38,7 +38,11 @@ public class Notification {
     @Column(name = "listing_id")
     private Long listingId;
 
+    @Column(name = "order_id")
+    private String orderId;
+
     @Builder.Default
+    @Column(name = "is_read")
     private boolean read = false;
 
     @Builder.Default

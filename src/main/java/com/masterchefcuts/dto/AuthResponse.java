@@ -1,5 +1,6 @@
 package com.masterchefcuts.dto;
 
+import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -25,4 +26,7 @@ public class AuthResponse {
     private String state;
     private String zipCode;
     private boolean approved;
+    private NotificationPreference notificationPreference;
+    private String bio;
+    private String certifications;
 }

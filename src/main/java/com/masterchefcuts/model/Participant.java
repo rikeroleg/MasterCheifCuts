@@ -1,5 +1,6 @@
 package com.masterchefcuts.model;
 
+import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -50,4 +51,26 @@ public class Participant {
 
     private String resetToken;
     private java.time.LocalDateTime resetTokenExpiry;
+
+    private boolean emailVerified;
+    private String verificationToken;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private NotificationPreference notificationPreference = NotificationPreference.ALL;
+
+    // Farmer profile enrichment
+    @Column(length = 500)
+    private String bio;
+
+    @Column(length = 500)
+    private String certifications;
+
+    // Stripe Connect — farmer payout account
+    @Column(name = "stripe_account_id")
+    private String stripeAccountId;
+
+    @Builder.Default
+    @Column(name = "stripe_onboarding_complete")
+    private Boolean stripeOnboardingComplete = false;
 }

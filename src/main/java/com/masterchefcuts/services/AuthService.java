@@ -8,6 +8,7 @@ import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,14 +20,28 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthService {
 
+    @Value("${features.email-verification:false}")
+    private boolean emailVerificationEnabled;
+
     private final ParticipantRepo participantRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final ReferralService referralService;
 
     @Transactional
-    public AuthResponse register(RegisterRequest req) {
-        if (participantRepo.existsByEmail(req.getEmail()))
+    public AuthResponse register(RegisterRequest req, EmailService emailService) {
+        java.util.Optional<Participant> existing = participantRepo.findByEmail(req.getEmail());
+        if (existing.isPresent()) {
+            Participant ex = existing.get();
+            if (emailVerificationEnabled && !ex.isEmailVerified()) {
+                String newToken = UUID.randomUUID().toString();
+                ex.setVerificationToken(newToken);
+                participantRepo.save(ex);
+                emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
+                return buildResponse(ex, null);
+            }
             throw new RuntimeException("An account with that email already exists.");
+        }
 
         boolean isFarmer = req.getRole() == Role.FARMER;
 
@@ -48,9 +63,23 @@ public class AuthService {
                 .approved(!isFarmer)
                 .build();
 
+        if (emailVerificationEnabled) {
+            String verificationToken = UUID.randomUUID().toString();
+            participant.setEmailVerified(false);
+            participant.setVerificationToken(verificationToken);
+            participant = participantRepo.save(participant);
+            emailService.sendEmailVerification(participant.getEmail(), participant.getFirstName(), verificationToken);
+            if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
+                referralService.recordReferral(req.getReferralCode(), participant.getId());
+            }
+            return buildResponse(participant, null);
+        }
+        participant.setEmailVerified(true);
         participant = participantRepo.save(participant);
-        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
-        return buildResponse(participant, token);
+        if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
+            referralService.recordReferral(req.getReferralCode(), participant.getId());
+        }
+        return buildResponse(participant, null);
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -60,8 +89,20 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
             throw new RuntimeException("Incorrect email or password.");
 
+        if (emailVerificationEnabled && !participant.isEmailVerified())
+            throw new RuntimeException("EMAIL_NOT_VERIFIED");
+
         String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
         return buildResponse(participant, token);
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        Participant p = participantRepo.findByVerificationToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired verification link."));
+        p.setEmailVerified(true);
+        p.setVerificationToken(null);
+        participantRepo.save(p);
     }
 
     public AuthResponse getMe(String participantId) {
@@ -84,9 +125,22 @@ public class AuthService {
         if (req.getState()     != null) participant.setState(req.getState());
         if (req.getZipCode()   != null) participant.setZipCode(req.getZipCode());
         if (req.getPhone()     != null) participant.setPhone(req.getPhone());
+        if (req.getBio()       != null) participant.setBio(req.getBio());
+        if (req.getCertifications() != null) participant.setCertifications(req.getCertifications());
 
         participant = participantRepo.save(participant);
         return buildResponse(participant, null);
+    }
+
+    @Transactional
+    public void resendVerification(String email, EmailService emailService) {
+        participantRepo.findByEmail(email).ifPresent(p -> {
+            if (p.isEmailVerified()) return;
+            String token = UUID.randomUUID().toString();
+            p.setVerificationToken(token);
+            participantRepo.save(p);
+            emailService.sendEmailVerification(p.getEmail(), p.getFirstName(), token);
+        });
     }
 
     @Transactional
@@ -127,6 +181,9 @@ public class AuthService {
                 .state(p.getState())
                 .zipCode(p.getZipCode())
                 .approved(p.isApproved())
+                .notificationPreference(p.getNotificationPreference())
+                .bio(p.getBio())
+                .certifications(p.getCertifications())
                 .build();
     }
 }

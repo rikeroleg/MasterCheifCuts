@@ -27,7 +27,6 @@ public class Listing {
     @JoinColumn(name = "farmer_id", nullable = false)
     private Participant farmer;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AnimalType animalType;
 
@@ -38,6 +37,9 @@ public class Listing {
     private double pricePerLb;
     private String sourceFarm;
     private String description;
+
+    @Column(name = "image_url", length = 512)
+    private String imageUrl;
 
     @Column(nullable = false)
     private String zipCode;

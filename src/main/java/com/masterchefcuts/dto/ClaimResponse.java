@@ -20,4 +20,6 @@ public class ClaimResponse {
     private Long cutId;
     private String cutLabel;
     private LocalDateTime claimedAt;
+    private LocalDateTime expiresAt;
+    private boolean paid;
 }

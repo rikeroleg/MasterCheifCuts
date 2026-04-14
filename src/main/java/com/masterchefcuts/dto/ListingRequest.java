@@ -30,5 +30,5 @@ public class ListingRequest {
     private String zipCode;
 
     @NotNull
-    private List<String> cutLabels;
+    private List<CutRequest> cuts;
 }

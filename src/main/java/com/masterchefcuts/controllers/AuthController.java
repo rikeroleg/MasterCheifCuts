@@ -21,7 +21,19 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req) {
-        return ResponseEntity.ok(authService.register(req));
+        return ResponseEntity.ok(authService.register(req, emailService));
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerification(@RequestParam String email) {
+        authService.resendVerification(email, emailService);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/login")
@@ -31,12 +43,18 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(@AuthenticationPrincipal String participantId) {
+        if (participantId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(authService.getMe(participantId));
     }
 
     @PatchMapping("/me")
     public ResponseEntity<AuthResponse> updateMe(@AuthenticationPrincipal String participantId,
                                                   @RequestBody RegisterRequest req) {
+        if (participantId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(authService.updateProfile(participantId, req));
     }
 

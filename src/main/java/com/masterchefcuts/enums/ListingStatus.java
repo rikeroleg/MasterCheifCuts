@@ -4,5 +4,6 @@ public enum ListingStatus {
     ACTIVE,
     FULLY_CLAIMED,
     PROCESSING,
-    COMPLETE
+    COMPLETE,
+    CLOSED
 }
