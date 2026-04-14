@@ -28,7 +28,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Set<String> RATE_LIMITED_PATHS = Set.of(
             "/api/auth/login",
-            "/api/auth/register"
+            "/api/auth/register",
+            "/api/auth/forgot-password"
     );
 
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();

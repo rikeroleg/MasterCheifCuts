@@ -43,7 +43,7 @@ public class ReviewService {
                 .buyer(buyer)
                 .listing(listing)
                 .rating(req.getRating())
-                .comment(req.getComment())
+                .comment(stripHtml(req.getComment()))
                 .build());
 
         return toDto(review);
@@ -61,6 +61,11 @@ public class ReviewService {
 
     public boolean hasReviewed(String buyerId, Long listingId) {
         return reviewRepository.existsByBuyerIdAndListingId(buyerId, listingId);
+    }
+
+    private String stripHtml(String input) {
+        if (input == null) return "";
+        return input.replaceAll("<[^>]*>", "").trim();
     }
 
     private ReviewResponse toDto(Review r) {

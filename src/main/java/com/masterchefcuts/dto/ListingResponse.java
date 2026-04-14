@@ -30,6 +30,8 @@ public class ListingResponse {
     private String farmerId;
     private String farmerName;
     private String farmerShopName;
+    private String farmerBio;
+    private String farmerCertifications;
 
     private List<CutDto> cuts;
     private int totalCuts;

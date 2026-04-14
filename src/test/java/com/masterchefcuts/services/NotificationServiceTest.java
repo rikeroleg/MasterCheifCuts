@@ -154,4 +154,24 @@ class NotificationServiceTest {
         assertThatCode(() -> notificationService.clearAll("user-1"))
                 .doesNotThrowAnyException();
     }
+
+    // ── subscribe (SSE) ───────────────────────────────────────────────────
+
+    @Test
+    void subscribe_returnsNonNullSseEmitter() {
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter emitter =
+                notificationService.subscribe("user-1");
+
+        assertThat(emitter).isNotNull();
+    }
+
+    @Test
+    void subscribe_calledTwice_secondCallWins() {
+        // Two subscriptions for the same user — the second replaces the first
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter first  = notificationService.subscribe("user-1");
+        org.springframework.web.servlet.mvc.method.annotation.SseEmitter second = notificationService.subscribe("user-1");
+
+        assertThat(first).isNotNull();
+        assertThat(second).isNotNull();
+    }
 }

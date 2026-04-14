@@ -102,4 +102,60 @@ class EmailServiceTest {
         // Should not propagate — service catches and logs
         emailService.sendEmailVerification("bob@buyer.com", "Bob", "token");
     }
+
+    // ── sendOrderAccepted / sendOrderReady / sendOrderCompleted ─────────────────
+
+    @Test
+    void sendOrderAccepted_sends1EmailToBuyer() {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(200.0);
+
+        emailService.sendOrderAccepted(order, buyer);
+
+        verify(mailSender).send(argThat((SimpleMailMessage msg) ->
+                msg.getTo() != null && "bob@buyer.com".equals(msg.getTo()[0])));
+    }
+
+    @Test
+    void sendOrderReady_sends1EmailToBuyer() {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+
+        emailService.sendOrderReady(order, buyer);
+
+        verify(mailSender).send(argThat((SimpleMailMessage msg) ->
+                msg.getTo() != null && "bob@buyer.com".equals(msg.getTo()[0])));
+    }
+
+    @Test
+    void sendOrderCompleted_sends1EmailToBuyer() {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+
+        emailService.sendOrderCompleted(order, buyer);
+
+        verify(mailSender).send(argThat((SimpleMailMessage msg) ->
+                msg.getTo() != null && "bob@buyer.com".equals(msg.getTo()[0])));
+    }
+
+    // ── sendFarmerApproved ────────────────────────────────────────────────────
+
+    @Test
+    void sendFarmerApproved_sends1Email() {
+        emailService.sendFarmerApproved(farmer);
+        verify(mailSender).send(any(SimpleMailMessage.class));
+    }
+
+    @Test
+    void sendFarmerApproved_emailAddressedToFarmer() {
+        emailService.sendFarmerApproved(farmer);
+
+        verify(mailSender).send(argThat((SimpleMailMessage msg) ->
+                msg.getTo() != null &&
+                msg.getTo().length == 1 &&
+                "jane@farm.com".equals(msg.getTo()[0])
+        ));
+    }
 }
+

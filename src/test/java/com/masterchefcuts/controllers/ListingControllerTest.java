@@ -79,7 +79,7 @@ class ListingControllerTest {
 
     @Test
     void getAll_noFilters_returns200WithList() throws Exception {
-        when(listingService.getAll(null, null, null, null, 0, 20)).thenReturn(List.of(sampleListing));
+        when(listingService.getAll(null, null, null, null, 0, 20, null, null)).thenReturn(List.of(sampleListing));
 
         mockMvc.perform(get("/api/listings"))
                 .andExpect(status().isOk())
@@ -88,10 +88,19 @@ class ListingControllerTest {
 
     @Test
     void getAll_withZipAndAnimal_passesBothParams() throws Exception {
-        when(listingService.getAll("12345", "BEEF", null, null, 0, 20)).thenReturn(List.of(sampleListing));
+        when(listingService.getAll("12345", "BEEF", null, null, 0, 20, null, null)).thenReturn(List.of(sampleListing));
 
         mockMvc.perform(get("/api/listings").param("zip", "12345").param("animal", "BEEF"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getAll_withKeywordQ_passesQToService() throws Exception {
+        when(listingService.getAll(null, null, null, null, 0, 20, "angus", null)).thenReturn(List.of(sampleListing));
+
+        mockMvc.perform(get("/api/listings").param("q", "angus"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].breed").value("Angus"));
     }
 
     // ── GET /api/listings/{id} ────────────────────────────────────────────────

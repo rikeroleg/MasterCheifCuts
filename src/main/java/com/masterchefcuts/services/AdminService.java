@@ -3,11 +3,16 @@ package com.masterchefcuts.services;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ClaimRepository;
+import com.masterchefcuts.repositories.CommentRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.OrderRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
+import com.masterchefcuts.dto.CommentResponse;
+import com.masterchefcuts.model.Comment;
 import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +33,8 @@ public class AdminService {
     private final OrderRepository orderRepository;
     private final RefundService refundService;
     private final AuditService auditService;
+    private final CommentRepository commentRepository;
+    private final EmailService emailService;
 
     public List<Participant> getAllUsers() {
         return participantRepo.findAll();
@@ -51,6 +58,9 @@ public class AdminService {
         p.setApproved(approved);
         Participant saved = participantRepo.save(p);
         auditService.log(currentActorId(), approved ? "APPROVE_USER" : "REJECT_USER", userId);
+        if (approved && p.getRole().name().equals("FARMER")) {
+            emailService.sendFarmerApproved(saved);
+        }
         return saved;
     }
 
@@ -63,6 +73,35 @@ public class AdminService {
     private String currentActorId() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null ? (String) auth.getPrincipal() : null;
+    }
+
+    public Map<String, Object> getCommentsPaged(int page, int size) {
+        Page<Comment> result = commentRepository.findAll(PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")));
+        List<Map<String, Object>> content = result.getContent().stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("authorId", c.getAuthor() != null ? c.getAuthor().getId() : null);
+            m.put("authorName", c.getAuthor() != null
+                    ? (c.getAuthor().getFirstName() + " " + c.getAuthor().getLastName()).trim() : "Unknown");
+            m.put("body", c.getBody());
+            m.put("listingId", c.getListing() != null ? c.getListing().getId() : null);
+            m.put("createdAt", c.getCreatedAt());
+            return m;
+        }).collect(Collectors.toList());
+        return Map.of(
+                "content", content,
+                "page", result.getNumber(),
+                "size", result.getSize(),
+                "totalElements", result.getTotalElements(),
+                "hasNext", result.hasNext()
+        );
+    }
+
+    @Transactional
+    public void adminDeleteComment(Long commentId) {
+        commentRepository.deleteById(commentId);
+        auditService.log(currentActorId(), "ADMIN_DELETE_COMMENT", String.valueOf(commentId));
     }
 
     public Map<String, Object> getUserDetail(String userId) {

@@ -44,9 +44,9 @@ public class ListingService {
     private final EmailService emailService;
     private final AuditService auditService;
 
-    // Optional — only present under the "aws" Spring profile
+    // Optional — present only when a storage profile (aws/gcp) is enabled.
     @Autowired(required = false)
-    private S3Service s3Service;
+    private StorageService storageService;
 
     /**
      * When true (default), farmers must complete Stripe Connect onboarding before posting listings.
@@ -92,6 +92,18 @@ public class ListingService {
     @Transactional(readOnly = true)
     public List<ListingResponse> getAll(String zipCode, String animalType, String farmerId,
                                         Double maxPricePerLb, int page, int size) {
+        return getAll(zipCode, animalType, farmerId, maxPricePerLb, page, size, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListingResponse> getAll(String zipCode, String animalType, String farmerId,
+                                        Double maxPricePerLb, int page, int size, String q) {
+        return getAll(zipCode, animalType, farmerId, maxPricePerLb, page, size, q, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListingResponse> getAll(String zipCode, String animalType, String farmerId,
+                                        Double maxPricePerLb, int page, int size, String q, String breed) {
         if (farmerId != null && !farmerId.isBlank()) {
             return listingRepository.findByFarmerIdOrderByPostedAtDesc(farmerId, PageRequest.of(page, size))
                     .getContent().stream().map(this::toDto).collect(Collectors.toList());
@@ -109,6 +121,18 @@ public class ListingService {
         }
         if (zipCode != null && !zipCode.isBlank()) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("zipCode"), zipCode));
+        }
+        if (q != null && !q.isBlank()) {
+            String pattern = "%" + q.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("breed")), pattern),
+                    cb.like(cb.lower(root.get("description")), pattern),
+                    cb.like(cb.lower(root.get("sourceFarm")), pattern)
+            ));
+        }
+        if (breed != null && !breed.isBlank()) {
+            String pattern = "%" + breed.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("breed")), pattern));
         }
 
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "postedAt"));
@@ -286,7 +310,7 @@ public class ListingService {
 
     @Transactional
     public ListingResponse uploadPhoto(Long listingId, String farmerId, MultipartFile file) {
-        if (s3Service == null)
+        if (storageService == null)
             throw new RuntimeException("Photo upload is not available in this environment");
 
         // Validate MIME type — do NOT trust file extension, check content type
@@ -312,7 +336,7 @@ public class ListingService {
         String key = "listings/" + listingId + "/cover." + ext;
 
         try {
-            String imageUrl = s3Service.upload(key, file.getInputStream(), file.getSize(), contentType);
+            String imageUrl = storageService.upload(key, file.getInputStream(), file.getSize(), contentType);
             listing.setImageUrl(imageUrl);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read uploaded file", e);
@@ -354,6 +378,8 @@ public class ListingService {
                 .farmerId(l.getFarmer().getId())
                 .farmerName(l.getFarmer().getFirstName() + " " + l.getFarmer().getLastName())
                 .farmerShopName(l.getFarmer().getShopName())
+                .farmerBio(l.getFarmer().getBio())
+                .farmerCertifications(l.getFarmer().getCertifications())
                 .cuts(cutDtos)
                 .totalCuts(l.getCuts().size())
                 .claimedCuts((int) claimedCount)

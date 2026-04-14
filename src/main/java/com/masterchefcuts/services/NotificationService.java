@@ -8,19 +8,28 @@ import com.masterchefcuts.model.Notification;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+
+    // SSE emitters keyed by participantId. One active connection per user (last wins).
+    private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     public void send(Participant recipient, NotificationType type, String icon, String title, String body, Long listingId) {
         send(recipient, type, icon, title, body, listingId, null);
@@ -44,6 +53,36 @@ public class NotificationService {
                 .orderId(orderId)
                 .build();
         notificationRepository.save(n);
+        pushToEmitter(recipient.getId(), toDto(n));
+    }
+
+    private void pushToEmitter(String recipientId, NotificationResponse dto) {
+        SseEmitter emitter = emitters.get(recipientId);
+        if (emitter == null) return;
+        try {
+            emitter.send(SseEmitter.event().data(dto));
+        } catch (IOException e) {
+            emitters.remove(recipientId, emitter);
+            log.debug("SSE push failed for {}, emitter removed", recipientId);
+        }
+    }
+
+    public SseEmitter subscribe(String participantId) {
+        // Use Long.MAX_VALUE timeout — browser will reconnect when the connection drops.
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+        emitters.put(participantId, emitter);
+
+        Runnable cleanup = () -> emitters.remove(participantId, emitter);
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(cleanup);
+        emitter.onError(e -> cleanup.run());
+
+        try {
+            emitter.send(SseEmitter.event().name("connected").data("ok"));
+        } catch (IOException e) {
+            emitters.remove(participantId, emitter);
+        }
+        return emitter;
     }
 
     public List<NotificationResponse> getForRecipient(String recipientId) {

@@ -33,9 +33,11 @@ public class ListingController {
             @RequestParam(required = false) String animal,
             @RequestParam(required = false) String farmerId,
             @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String breed,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(listingService.getAll(zip, animal, farmerId, maxPrice, page, size));
+        return ResponseEntity.ok(listingService.getAll(zip, animal, farmerId, maxPrice, page, size, q, breed));
     }
 
     @GetMapping("/{id}")

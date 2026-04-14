@@ -3,9 +3,13 @@ package com.masterchefcuts.controllers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.enums.Role;
+import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
+import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
+import com.masterchefcuts.repositories.ReviewRepository;
 import com.masterchefcuts.services.AuthService;
+import com.masterchefcuts.services.OrderService;
 import com.masterchefcuts.services.ParticipantService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +17,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -31,6 +39,14 @@ class ParticipantControllerTest {
     @MockBean JwtUtil jwtUtil;
     @MockBean ParticipantRepo participantRepo;
     @MockBean AuthService authService;
+    @MockBean ListingRepository listingRepository;
+    @MockBean OrderService orderService;
+    @MockBean ReviewRepository reviewRepository;
+
+    private void auth(String userId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userId, null, List.of()));
+    }
 
     @Test
     void add_returns200SuccessMessage() throws Exception {
@@ -47,5 +63,68 @@ class ParticipantControllerTest {
                         .content(objectMapper.writeValueAsString(participant)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Participant added successfully"));
+    }
+
+    // ── GET /api/participants/me/analytics ──────────────────────────────────
+
+    @Test
+    void getMyAnalytics_emptyData_returnsZeros() throws Exception {
+        when(listingRepository.findByFarmerIdOrderByPostedAtDesc("farmer-1")).thenReturn(List.of());
+        when(orderService.getFarmerOrders("farmer-1")).thenReturn(List.of());
+        when(reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc("farmer-1")).thenReturn(List.of());
+
+        auth("farmer-1");
+        try {
+            mockMvc.perform(get("/api/participants/me/analytics"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalListings").value(0))
+                    .andExpect(jsonPath("$.activeListings").value(0))
+                    .andExpect(jsonPath("$.totalCutsClaimed").value(0))
+                    .andExpect(jsonPath("$.totalRevenue").value(0.0))
+                    .andExpect(jsonPath("$.averageRating").value(0.0))
+                    .andExpect(jsonPath("$.totalReviews").value(0));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void getMyAnalytics_withCompletedOrder_includesRevenue() throws Exception {
+        when(listingRepository.findByFarmerIdOrderByPostedAtDesc("farmer-1")).thenReturn(List.of());
+
+        Order completedOrder = new Order();
+        completedOrder.setStatus("COMPLETED");
+        completedOrder.setAmountCents(5000L); // $50.00
+        when(orderService.getFarmerOrders("farmer-1")).thenReturn(List.of(completedOrder));
+        when(reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc("farmer-1")).thenReturn(List.of());
+
+        auth("farmer-1");
+        try {
+            mockMvc.perform(get("/api/participants/me/analytics"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalRevenue").value(50.0));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void getMyAnalytics_nonCompletedOrdersExcludedFromRevenue() throws Exception {
+        when(listingRepository.findByFarmerIdOrderByPostedAtDesc("farmer-1")).thenReturn(List.of());
+
+        Order paidOrder = new Order();
+        paidOrder.setStatus("PAID");
+        paidOrder.setAmountCents(10000L);
+        when(orderService.getFarmerOrders("farmer-1")).thenReturn(List.of(paidOrder));
+        when(reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc("farmer-1")).thenReturn(List.of());
+
+        auth("farmer-1");
+        try {
+            mockMvc.perform(get("/api/participants/me/analytics"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalRevenue").value(0.0));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }

@@ -90,4 +90,58 @@ class JwtAuthFilterTest {
         verify(chain).doFilter(request, response);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
+
+    // ── query-param ?token= fallback (used by SSE/EventSource) ────────────────
+
+    @Test
+    void queryParamToken_valid_setsAuthenticationAndContinues() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        when(request.getHeader("Authorization")).thenReturn(null);
+        when(request.getParameter("token")).thenReturn("valid-sse-token");
+        when(jwtUtil.isValid("valid-sse-token")).thenReturn(true);
+        when(jwtUtil.extractId("valid-sse-token")).thenReturn("user-2");
+        when(jwtUtil.extractRole("valid-sse-token")).thenReturn("BUYER");
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(auth).isNotNull();
+        assertThat(auth.getPrincipal()).isEqualTo("user-2");
+        assertThat(auth.getAuthorities()).extracting("authority").containsExactly("ROLE_BUYER");
+    }
+
+    @Test
+    void queryParamToken_invalid_noAuthSet() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        when(request.getHeader("Authorization")).thenReturn(null);
+        when(request.getParameter("token")).thenReturn("bad-sse-token");
+        when(jwtUtil.isValid("bad-sse-token")).thenReturn(false);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
+
+    @Test
+    void queryParamToken_blank_noAuthSet() throws Exception {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        FilterChain chain = mock(FilterChain.class);
+
+        when(request.getHeader("Authorization")).thenReturn(null);
+        when(request.getParameter("token")).thenReturn("   ");
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
 }

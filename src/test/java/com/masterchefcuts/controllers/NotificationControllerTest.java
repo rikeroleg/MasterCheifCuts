@@ -21,6 +21,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 @WebMvcTest(NotificationController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class NotificationControllerTest {
@@ -38,7 +40,15 @@ class NotificationControllerTest {
             .id(1L).type(NotificationType.CUT_CLAIMED).icon("🛒")
             .title("Cut claimed").body("You claimed Ribeye").read(false)
             .listingId(1L).createdAt(LocalDateTime.now()).build();
+    // ── GET /api/notifications/stream ──────────────────────────────────────────
 
+    @Test
+    void stream_returns200ForAuthenticatedUser() throws Exception {
+        when(notificationService.subscribe("user-1")).thenReturn(new SseEmitter(Long.MAX_VALUE));
+
+        mockMvc.perform(get("/api/notifications/stream").with(authentication(auth())))
+                .andExpect(status().isOk());
+    }
     // ── GET /api/notifications ────────────────────────────────────────────────
 
     @Test

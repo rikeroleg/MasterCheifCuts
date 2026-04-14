@@ -110,4 +110,46 @@ class AdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalUsers").value(5));
     }
-}
+    // ── GET /api/admin/comments ───────────────────────────────────────
+
+    @Test
+    void getComments_returns200WithPagedResponse() throws Exception {
+        Map<String, Object> paged = Map.of(
+                "content", List.of(Map.of("id", 1, "body", "Great beef!", "authorName", "Bob B.")),
+                "page", 0, "size", 25, "totalElements", 1L, "hasNext", false);
+        when(adminService.getCommentsPaged(0, 25)).thenReturn(paged);
+
+        mockMvc.perform(get("/api/admin/comments").with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void getComments_withCustomPage_passesParams() throws Exception {
+        when(adminService.getCommentsPaged(2, 10)).thenReturn(Map.of(
+                "content", List.of(), "page", 2, "size", 10, "totalElements", 0L, "hasNext", false));
+
+        mockMvc.perform(get("/api/admin/comments")
+                        .param("page", "2").param("size", "10")
+                        .with(authentication(adminAuth())))
+                .andExpect(status().isOk());
+    }
+
+    // ── DELETE /api/admin/comments/{id} ────────────────────────────────
+
+    @Test
+    void deleteComment_returns204() throws Exception {
+        doNothing().when(adminService).adminDeleteComment(1L);
+
+        mockMvc.perform(delete("/api/admin/comments/1").with(authentication(adminAuth())))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteComment_serviceThrows_returns400() throws Exception {
+        doThrow(new RuntimeException("Comment not found")).when(adminService).adminDeleteComment(99L);
+
+        mockMvc.perform(delete("/api/admin/comments/99").with(authentication(adminAuth())))
+                .andExpect(status().isBadRequest());
+    }}
