@@ -30,6 +30,13 @@
 			<version>2.26.23</version>
 		</dependency>
 
+		<!-- Google Cloud Storage — for listing photo uploads on GCP profile -->
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-storage</artifactId>
+			<version>2.37.0</version>
+		</dependency>
+
 		<dependency>
 			<groupId>com.microsoft.sqlserver</groupId>
 			<artifactId>mssql-jdbc</artifactId>
@@ -151,9 +158,13 @@
 					<excludes>
 						<!-- Exclude infra/config classes with no testable logic -->
 						<exclude>com/masterchefcuts/MasterchefcutsApplication.class</exclude>
-						<!-- S3Service is @Profile("aws") and requires live AWS credentials -->
-						<exclude>com/masterchefcuts/services/S3Service.class</exclude>					<!-- SecurityConfig wires Spring Security beans — no unit-testable logic -->
-					<exclude>com/masterchefcuts/config/SecurityConfig.class</exclude>					</excludes>
+						<!-- Storage providers are profile/integration dependent -->
+						<exclude>com/masterchefcuts/services/S3Service.class</exclude>
+						<exclude>com/masterchefcuts/services/GcsStorageService.class</exclude>
+						<exclude>com/masterchefcuts/services/StorageService.class</exclude>
+						<!-- SecurityConfig wires Spring Security beans — no unit-testable logic -->
+						<exclude>com/masterchefcuts/config/SecurityConfig.class</exclude>
+					</excludes>
 				</configuration>
 				<executions>
 					<execution>

@@ -81,3 +81,6 @@ logs/
 .aws/
 *~
 *.orig
+
+### CI/CD generated files ###
+.github/workflows/GCP_DEPLOYMENT_SETUP.md

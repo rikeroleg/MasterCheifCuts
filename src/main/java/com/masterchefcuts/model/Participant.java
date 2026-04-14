@@ -59,6 +59,13 @@ public class Participant {
     @Builder.Default
     private NotificationPreference notificationPreference = NotificationPreference.ALL;
 
+    // Farmer profile enrichment
+    @Column(length = 500)
+    private String bio;
+
+    @Column(length = 500)
+    private String certifications;
+
     // Stripe Connect — farmer payout account
     @Column(name = "stripe_account_id")
     private String stripeAccountId;

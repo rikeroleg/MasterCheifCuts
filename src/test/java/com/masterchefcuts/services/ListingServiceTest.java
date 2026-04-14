@@ -47,7 +47,7 @@ class ListingServiceTest {
     @Mock private ClaimRepository claimRepository;
     @Mock private NotificationService notificationService;
     @Mock private EmailService emailService;
-    @Mock private S3Service s3Service;
+    @Mock private StorageService storageService;
     @Mock private MultipartFile file;
 
     @InjectMocks private ListingService listingService;
@@ -135,6 +135,28 @@ class ListingServiceTest {
                 .thenReturn(new PageImpl<>(List.of(listing)));
 
         List<ListingResponse> result = listingService.getAll("12345", null, null, null, 0, 20);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void getAll_withKeywordQ_delegatesToSpecAndReturnsMatches() {
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(listing)));
+
+        List<ListingResponse> result = listingService.getAll(null, null, null, null, 0, 20, "angus");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getBreed()).isEqualTo("Angus");
+    }
+
+    @Test
+    void getAll_withBlankQ_doesNotAddKeywordSpec() {
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(listing)));
+
+        // blank q should be treated same as null — still returns results
+        List<ListingResponse> result = listingService.getAll(null, null, null, null, 0, 20, "   ");
 
         assertThat(result).hasSize(1);
     }
@@ -239,7 +261,7 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_s3NotAvailable_throwsRuntime() {
-        // s3Service is NOT injected into listingService (optional @Autowired) — remains null
+        // storageService is NOT injected into listingService (optional @Autowired) — remains null
         assertThatThrownBy(() -> listingService.uploadPhoto(1L, "farmer-1", file))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("not available");
@@ -247,7 +269,7 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_invalidMimeType_throwsIllegalArgument() {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("application/pdf");
 
         assertThatThrownBy(() -> listingService.uploadPhoto(1L, "farmer-1", file))
@@ -257,7 +279,7 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_fileTooLarge_throwsIllegalArgument() {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("image/jpeg");
         when(file.getSize()).thenReturn(6L * 1024 * 1024); // 6 MB > 5 MB limit
 
@@ -268,7 +290,7 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_listingNotFound_throwsRuntime() {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("image/jpeg");
         when(file.getSize()).thenReturn(1024L);
         when(listingRepository.findById(99L)).thenReturn(Optional.empty());
@@ -280,7 +302,7 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_notAuthorizedFarmer_throwsRuntime() {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("image/jpeg");
         when(file.getSize()).thenReturn(1024L);
         when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
@@ -292,12 +314,12 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_success_jpeg_returnsUpdatedListing() throws Exception {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("image/jpeg");
         when(file.getSize()).thenReturn(1024L);
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[10]));
         when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
-        when(s3Service.upload(anyString(), any(), anyLong(), anyString())).thenReturn("https://cdn.example.com/cover.jpg");
+        when(storageService.upload(anyString(), any(), anyLong(), anyString())).thenReturn("https://cdn.example.com/cover.jpg");
         when(listingRepository.save(any(Listing.class))).thenReturn(listing);
 
         ListingResponse response = listingService.uploadPhoto(1L, "farmer-1", file);
@@ -308,34 +330,34 @@ class ListingServiceTest {
 
     @Test
     void uploadPhoto_success_png_usesPngExtension() throws Exception {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("image/png");
         when(file.getSize()).thenReturn(1024L);
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[10]));
         when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
-        when(s3Service.upload(anyString(), any(), anyLong(), anyString())).thenReturn("https://cdn.example.com/cover.png");
+        when(storageService.upload(anyString(), any(), anyLong(), anyString())).thenReturn("https://cdn.example.com/cover.png");
         when(listingRepository.save(any(Listing.class))).thenReturn(listing);
 
         ListingResponse response = listingService.uploadPhoto(1L, "farmer-1", file);
 
         assertThat(response).isNotNull();
-        verify(s3Service).upload(argThat(key -> key.endsWith(".png")), any(), anyLong(), eq("image/png"));
+        verify(storageService).upload(argThat(key -> key.endsWith(".png")), any(), anyLong(), eq("image/png"));
     }
 
     @Test
     void uploadPhoto_success_webp_usesWebpExtension() throws Exception {
-        ReflectionTestUtils.setField(listingService, "s3Service", s3Service);
+        ReflectionTestUtils.setField(listingService, "storageService", storageService);
         when(file.getContentType()).thenReturn("image/webp");
         when(file.getSize()).thenReturn(1024L);
         when(file.getInputStream()).thenReturn(new ByteArrayInputStream(new byte[10]));
         when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
-        when(s3Service.upload(anyString(), any(), anyLong(), anyString())).thenReturn("https://cdn.example.com/cover.webp");
+        when(storageService.upload(anyString(), any(), anyLong(), anyString())).thenReturn("https://cdn.example.com/cover.webp");
         when(listingRepository.save(any(Listing.class))).thenReturn(listing);
 
         ListingResponse response = listingService.uploadPhoto(1L, "farmer-1", file);
 
         assertThat(response).isNotNull();
-        verify(s3Service).upload(argThat(key -> key.endsWith(".webp")), any(), anyLong(), eq("image/webp"));
+        verify(storageService).upload(argThat(key -> key.endsWith(".webp")), any(), anyLong(), eq("image/webp"));
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

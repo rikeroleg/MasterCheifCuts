@@ -26,6 +26,23 @@ public class OrderController {
     }
 
     /**
+     * Get a single order by ID — buyer who placed it or farmer whose listing is in it.
+     */
+    @GetMapping("/api/orders/{orderId}")
+    public ResponseEntity<Order> getOrderById(
+            @AuthenticationPrincipal String requesterId,
+            @PathVariable String orderId) {
+        if (requesterId == null) return ResponseEntity.status(401).build();
+        try {
+            return ResponseEntity.ok(orderService.getOrderById(orderId, requesterId));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
      * Get all orders for this farmer's listings
      */
     @PreAuthorize("hasRole('FARMER')")

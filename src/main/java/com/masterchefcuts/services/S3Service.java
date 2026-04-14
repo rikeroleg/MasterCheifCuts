@@ -20,7 +20,7 @@ import java.io.InputStream;
  */
 @Service
 @Profile("aws")
-public class S3Service {
+public class S3Service implements StorageService {
 
     private final S3Client s3Client;
     private final String bucketName;
@@ -46,6 +46,7 @@ public class S3Service {
      * @param contentType   validated MIME type (image/jpeg, image/png, image/webp)
      * @return public HTTPS URL of the uploaded object
      */
+    @Override
     public String upload(String key, InputStream inputStream, long contentLength, String contentType) {
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucketName)
@@ -66,6 +67,7 @@ public class S3Service {
     /**
      * Deletes an object from S3 by key.
      */
+    @Override
     public void delete(String key) {
         s3Client.deleteObject(DeleteObjectRequest.builder()
                 .bucket(bucketName)

@@ -258,6 +258,50 @@ public class EmailService {
         }
     }
 
+    @Async
+    public void sendOrderAccepted(Order order, Participant buyer) {
+        String subject = "✅ Your order has been accepted — MasterChef Cuts";
+        String body = "Hi " + buyer.getFirstName() + ",\n\n"
+                + "Great news! The farmer has accepted your order #"
+                + order.getId().substring(0, 8).toUpperCase() + ".\n\n"
+                + "Your cuts are now being processed. We'll notify you when your order is ready for pickup.\n\n"
+                + "— MasterChef Cuts";
+        send(buyer.getEmail(), subject, body);
+    }
+
+    @Async
+    public void sendOrderReady(Order order, Participant buyer) {
+        String subject = "📦 Your order is ready for pickup — MasterChef Cuts";
+        String body = "Hi " + buyer.getFirstName() + ",\n\n"
+                + "Your order #" + order.getId().substring(0, 8).toUpperCase() + " is ready for pickup!\n\n"
+                + "Please contact the farmer to arrange collection of your cuts. Once you have received your "
+                + "order, log in and confirm receipt so the farmer can receive their payout.\n\n"
+                + "— MasterChef Cuts";
+        send(buyer.getEmail(), subject, body);
+    }
+
+    @Async
+    public void sendOrderCompleted(Order order, Participant buyer) {
+        String subject = "🎉 Order complete — thank you! — MasterChef Cuts";
+        String body = "Hi " + buyer.getFirstName() + ",\n\n"
+                + "Your order #" + order.getId().substring(0, 8).toUpperCase()
+                + " has been marked as complete. Thank you for shopping with MasterChef Cuts!\n\n"
+                + "Enjoyed your purchase? Consider leaving a review for the farmer on your listing page.\n\n"
+                + "— MasterChef Cuts";
+        send(buyer.getEmail(), subject, body);
+    }
+
+    @Async
+    public void sendFarmerApproved(Participant farmer) {
+        String subject = "✅ Your MasterChef Cuts farmer account has been approved!";
+        String body = "Hi " + farmer.getFirstName() + ",\n\n"
+                + "Great news — your MasterChef Cuts farmer account has been approved! "
+                + "You can now log in and start posting listings for buyers to claim.\n\n"
+                + "Log in at: http://localhost:5173/login\n\n"
+                + "— MasterChef Cuts";
+        send(farmer.getEmail(), subject, body);
+    }
+
     private void send(String to, String subject, String body) {
         try {
             SimpleMailMessage msg = new SimpleMailMessage();

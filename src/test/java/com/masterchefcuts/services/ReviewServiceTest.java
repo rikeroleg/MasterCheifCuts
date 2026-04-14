@@ -181,4 +181,44 @@ class ReviewServiceTest {
 
         assertThat(result).isEmpty();
     }
+
+    // ── HTML sanitization ──────────────────────────────────────────────────────
+
+    @Test
+    void createReview_stripsHtmlFromComment() {
+        ReviewRequest req = new ReviewRequest();
+        req.setListingId(1L);
+        req.setRating(4);
+        req.setComment("<script>xss()</script>Great beef!");
+
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+        when(claimRepository.findByBuyerIdOrderByClaimedAtDesc("buyer-1")).thenReturn(List.of(claim));
+        when(reviewRepository.existsByBuyerIdAndListingId("buyer-1", 1L)).thenReturn(false);
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+        when(reviewRepository.save(any(Review.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        reviewService.createReview("buyer-1", req);
+
+        verify(reviewRepository).save(argThat(r ->
+                !r.getComment().contains("<script>") && r.getComment().contains("Great beef!")));
+    }
+
+    @Test
+    void createReview_plainTextComment_savedUnchanged() {
+        ReviewRequest req = new ReviewRequest();
+        req.setListingId(1L);
+        req.setRating(5);
+        req.setComment("Amazing beef!");
+
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+        when(claimRepository.findByBuyerIdOrderByClaimedAtDesc("buyer-1")).thenReturn(List.of(claim));
+        when(reviewRepository.existsByBuyerIdAndListingId("buyer-1", 1L)).thenReturn(false);
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+        when(reviewRepository.save(any(Review.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        reviewService.createReview("buyer-1", req);
+
+        verify(reviewRepository).save(argThat(r -> r.getComment().equals("Amazing beef!")));
+    }
 }
+

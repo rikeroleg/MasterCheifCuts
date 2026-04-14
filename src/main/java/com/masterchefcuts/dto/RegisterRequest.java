@@ -4,6 +4,7 @@ import com.masterchefcuts.enums.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -21,7 +22,11 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    @Pattern(
+        regexp = "^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$",
+        message = "Password must contain at least one uppercase letter, one number, and one special character"
+    )
     private String password;
 
     private String phone;
@@ -45,4 +50,11 @@ public class RegisterRequest {
 
     @NotBlank
     private String zipCode;
+
+    // Optional: referral code (the referring user's ID) from ?ref= query param
+    private String referralCode;
+
+    // Optional: farmer profile enrichment
+    private String bio;
+    private String certifications;
 }

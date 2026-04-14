@@ -29,6 +29,7 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtUtil jwtUtil;
     @Mock private EmailService emailService;
+    @Mock private ReferralService referralService;
 
     @InjectMocks private AuthService authService;
 

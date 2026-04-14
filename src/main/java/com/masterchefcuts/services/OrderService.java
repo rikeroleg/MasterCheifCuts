@@ -29,6 +29,22 @@ public class OrderService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final AuditService auditService;
+    private final EmailService emailService;
+
+    /**
+     * Get a single order by ID — accessible by the buyer who placed it or a farmer whose listing is in it.
+     */
+    public Order getOrderById(String orderId, String requesterId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+
+        boolean isBuyer  = requesterId.equals(order.getParticipantId());
+        boolean isFarmer = farmerOwnsOrderListings(requesterId, order);
+        if (!isBuyer && !isFarmer) {
+            throw new SecurityException("Access denied");
+        }
+        return order;
+    }
 
     /**
      * Get all orders for listings owned by this farmer
@@ -160,6 +176,7 @@ public class OrderService {
                 title = "Order Accepted";
                 body = "Your order has been accepted by the farmer and will be processed soon.";
                 type = NotificationType.ORDER_ACCEPTED;
+                emailService.sendOrderAccepted(order, buyer);
             }
             case PROCESSING -> {
                 icon = "🔪";
@@ -172,6 +189,7 @@ public class OrderService {
                 title = "Order Ready!";
                 body = "Your order is ready for pickup! Contact the farmer to arrange collection.";
                 type = NotificationType.ORDER_READY;
+                emailService.sendOrderReady(order, buyer);
             }
             case COMPLETED -> {
                 icon = "🎉";
@@ -209,6 +227,9 @@ public class OrderService {
         orderRepository.save(order);
 
         auditService.log(buyerId, "ORDER_CONFIRMED", orderId);
+
+        // Email buyer confirmation
+        participantRepo.findById(buyerId).ifPresent(buyer -> emailService.sendOrderCompleted(order, buyer));
 
         // Notify farmer
         notifyFarmerOfCompletion(order);

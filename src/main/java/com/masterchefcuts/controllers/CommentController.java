@@ -19,7 +19,13 @@ public class CommentController {
     private final CommentService commentService;
 
     @GetMapping
-    public ResponseEntity<List<CommentResponse>> getComments(@PathVariable Long listingId) {
+    public ResponseEntity<?> getComments(
+            @PathVariable Long listingId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(defaultValue = "20") int size) {
+        if (page != null) {
+            return ResponseEntity.ok(commentService.getCommentsPaged(listingId, page, size));
+        }
         return ResponseEntity.ok(commentService.getComments(listingId));
     }
 

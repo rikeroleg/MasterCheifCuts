@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +19,11 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+
+    @GetMapping("/stream")
+    public SseEmitter stream(@AuthenticationPrincipal String participantId) {
+        return notificationService.subscribe(participantId);
+    }
 
     @GetMapping
     public ResponseEntity<List<NotificationResponse>> getAll(@AuthenticationPrincipal String participantId) {

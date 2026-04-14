@@ -3,10 +3,13 @@ package com.masterchefcuts.services;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.Role;
+import com.masterchefcuts.model.Comment;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ClaimRepository;
+import com.masterchefcuts.repositories.CommentRepository;
 import com.masterchefcuts.repositories.ListingRepository;
+import com.masterchefcuts.repositories.OrderRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +36,11 @@ class AdminServiceTest {
     @Mock private ParticipantRepo participantRepo;
     @Mock private ListingRepository listingRepository;
     @Mock private ClaimRepository claimRepository;
+    @Mock private OrderRepository orderRepository;
+    @Mock private RefundService refundService;
+    @Mock private AuditService auditService;
+    @Mock private CommentRepository commentRepository;
+    @Mock private EmailService emailService;
 
     @InjectMocks private AdminService adminService;
 
@@ -143,5 +154,78 @@ class AdminServiceTest {
         Map<String, Object> stats = adminService.getStats();
 
         assertThat(stats.get("pendingFarmers")).isEqualTo(0L);
+    }
+
+    // ── getCommentsPaged ──────────────────────────────────────────────
+
+    @Test
+    void getCommentsPaged_returnsMapWithContent() {
+        Comment comment = Comment.builder()
+                .id(1L).author(buyer).body("Nice listing!").createdAt(LocalDateTime.now()).build();
+        Page<Comment> page = new PageImpl<>(List.of(comment));
+        when(commentRepository.findAll(any(Pageable.class))).thenReturn(page);
+
+        Map<String, Object> result = adminService.getCommentsPaged(0, 25);
+
+        assertThat(result.get("totalElements")).isEqualTo(1L);
+        assertThat(result.get("hasNext")).isEqualTo(false);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
+        assertThat(content).hasSize(1);
+        assertThat(content.get(0).get("id")).isEqualTo(1L);
+    }
+
+    @Test
+    void getCommentsPaged_emptyPage_returnsEmptyContent() {
+        Page<Comment> empty = new PageImpl<>(List.of());
+        when(commentRepository.findAll(any(Pageable.class))).thenReturn(empty);
+
+        Map<String, Object> result = adminService.getCommentsPaged(0, 25);
+
+        assertThat(result.get("totalElements")).isEqualTo(0L);
+        @SuppressWarnings("unchecked")
+        List<?> content = (List<?>) result.get("content");
+        assertThat(content).isEmpty();
+    }
+
+    // ── adminDeleteComment ───────────────────────────────────────────
+
+    @Test
+    void adminDeleteComment_callsRepositoryDeleteById() {
+        adminService.adminDeleteComment(5L);
+
+        verify(commentRepository).deleteById(5L);
+    }
+
+    // ── setApproved — farmer email ──────────────────────────────────────
+
+    @Test
+    void setApproved_farmer_approveTrue_sendsApprovalEmail() {
+        when(participantRepo.findById("farmer-2")).thenReturn(Optional.of(pendingFarmer));
+        when(participantRepo.save(pendingFarmer)).thenReturn(pendingFarmer);
+
+        adminService.setApproved("farmer-2", true);
+
+        verify(emailService).sendFarmerApproved(pendingFarmer);
+    }
+
+    @Test
+    void setApproved_farmer_approveFalse_doesNotSendEmail() {
+        when(participantRepo.findById("farmer-1")).thenReturn(Optional.of(farmer));
+        when(participantRepo.save(farmer)).thenReturn(farmer);
+
+        adminService.setApproved("farmer-1", false);
+
+        verify(emailService, never()).sendFarmerApproved(any());
+    }
+
+    @Test
+    void setApproved_buyer_approveTrue_doesNotSendFarmerEmail() {
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+        when(participantRepo.save(buyer)).thenReturn(buyer);
+
+        adminService.setApproved("buyer-1", true);
+
+        verify(emailService, never()).sendFarmerApproved(any());
     }
 }

@@ -27,4 +27,6 @@ public class AuthResponse {
     private String zipCode;
     private boolean approved;
     private NotificationPreference notificationPreference;
+    private String bio;
+    private String certifications;
 }

@@ -17,6 +17,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -107,11 +109,14 @@ class AuthControllerTest {
     @Test
     void me_returns200WithParticipantData() throws Exception {
         when(authService.getMe(any())).thenReturn(SAMPLE_RESPONSE);
-
-        mockMvc.perform(get("/api/auth/me")
-                        .with(authentication(stringAuth("user-1"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("user-1"));
+        SecurityContextHolder.getContext().setAuthentication(stringAuth("user-1"));
+        try {
+            mockMvc.perform(get("/api/auth/me"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value("user-1"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     // ── updateMe ──────────────────────────────────────────────────────────────
@@ -120,12 +125,15 @@ class AuthControllerTest {
     void updateMe_returns200() throws Exception {
         when(authService.updateProfile(any(), any(RegisterRequest.class)))
                 .thenReturn(SAMPLE_RESPONSE);
-
-        mockMvc.perform(patch("/api/auth/me")
-                        .with(authentication(stringAuth("user-1")))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"firstName\":\"Jane\"}"))
-                .andExpect(status().isOk());
+        SecurityContextHolder.getContext().setAuthentication(stringAuth("user-1"));
+        try {
+            mockMvc.perform(patch("/api/auth/me")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"firstName\":\"Jane\"}"))
+                    .andExpect(status().isOk());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     // ── forgotPassword ────────────────────────────────────────────────────────
@@ -157,7 +165,7 @@ class AuthControllerTest {
         req.setFirstName("John");
         req.setLastName("Doe");
         req.setEmail("john@example.com");
-        req.setPassword("password123");
+        req.setPassword("Test@1234");
         req.setRole(Role.BUYER);
         req.setStreet("123 Main St");
         req.setCity("Springfield");

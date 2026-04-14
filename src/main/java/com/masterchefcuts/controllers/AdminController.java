@@ -86,4 +86,19 @@ public class AdminController {
             @RequestParam(required = false) String to) {
         return ResponseEntity.ok(adminService.getFinancialOrders(status, from, to));
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/comments")
+    public ResponseEntity<Map<String, Object>> getComments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        return ResponseEntity.ok(adminService.getCommentsPaged(page, size));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/api/admin/comments/{id}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
+        adminService.adminDeleteComment(id);
+        return ResponseEntity.noContent().build();
+    }
 }

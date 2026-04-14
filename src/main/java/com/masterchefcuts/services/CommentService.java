@@ -8,11 +8,14 @@ import com.masterchefcuts.repositories.CommentRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +33,17 @@ public class CommentService {
                 .collect(Collectors.toList());
     }
 
+    public Map<String, Object> getCommentsPaged(Long listingId, int page, int size) {
+        Page<Comment> result = commentRepository.findByListingIdWithAuthor(listingId, PageRequest.of(page, size));
+        return Map.of(
+                "content", result.getContent().stream().map(this::toResponse).collect(Collectors.toList()),
+                "page", result.getNumber(),
+                "size", result.getSize(),
+                "totalElements", result.getTotalElements(),
+                "hasNext", result.hasNext()
+        );
+    }
+
     public CommentResponse addComment(Long listingId, String authorId, String body) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found"));
@@ -39,7 +53,7 @@ public class CommentService {
         Comment comment = Comment.builder()
                 .listing(listing)
                 .author(author)
-                .body(body)
+                .body(stripHtml(body))
                 .build();
 
         return toResponse(commentRepository.save(comment));
@@ -56,6 +70,11 @@ public class CommentService {
         }
 
         commentRepository.delete(comment);
+    }
+
+    private String stripHtml(String input) {
+        if (input == null) return "";
+        return input.replaceAll("<[^>]*>", "").trim();
     }
 
     private CommentResponse toResponse(Comment c) {

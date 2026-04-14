@@ -41,7 +41,7 @@ public class MessageService {
         Message msg = Message.builder()
                 .sender(sender)
                 .receiver(receiver)
-                .content(content.trim())
+                .content(stripHtml(content.trim()))
                 .build();
 
         return toDto(messageRepository.save(msg));
@@ -59,6 +59,11 @@ public class MessageService {
     public List<MessageThreadResponse> getThreads(String userId) {
         return messageRepository.findLatestPerThread(userId)
                 .stream().map(m -> toThreadDto(m, userId)).collect(Collectors.toList());
+    }
+
+    private String stripHtml(String input) {
+        if (input == null) return "";
+        return input.replaceAll("<[^>]*>", "").trim();
     }
 
     private MessageResponse toDto(Message m) {

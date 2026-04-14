@@ -26,21 +26,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
 
+        // Extract token from Authorization header, falling back to the
+        // ?token= query param used by EventSource (SSE) which cannot set headers.
+        String token = null;
         String authHeader = request.getHeader("Authorization");
-
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            if (jwtUtil.isValid(token)) {
-                String participantId = jwtUtil.extractId(token);
-                String role = jwtUtil.extractRole(token);
-
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        participantId,
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            token = authHeader.substring(7);
+        } else {
+            String queryToken = request.getParameter("token");
+            if (queryToken != null && !queryToken.isBlank()) {
+                token = queryToken;
             }
+        }
+
+        if (token != null && jwtUtil.isValid(token)) {
+            String participantId = jwtUtil.extractId(token);
+            String role = jwtUtil.extractRole(token);
+
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    participantId,
+                    null,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + role))
+            );
+            SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
         chain.doFilter(request, response);
