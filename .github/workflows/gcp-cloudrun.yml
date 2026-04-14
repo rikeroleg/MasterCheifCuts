@@ -22,16 +22,31 @@ jobs:
     name: Build and Deploy
     runs-on: ubuntu-latest
     environment: production
+    env:
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT != '' && vars.GCP_DEPLOYER_SERVICE_ACCOUNT || secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate GCP auth config
+        shell: bash
+        run: |
+          if [ -z "$GCP_WORKLOAD_IDENTITY_PROVIDER" ]; then
+            echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER. Set it as a repository/environment variable or secret."
+            exit 1
+          fi
+          if [ -z "$GCP_DEPLOYER_SERVICE_ACCOUNT" ]; then
+            echo "Missing GCP_DEPLOYER_SERVICE_ACCOUNT. Set it as a repository/environment variable or secret."
+            exit 1
+          fi
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_DEPLOYER_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -44,7 +59,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/masterchefcuts-server:${IMAGE_TAG}"
+          IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/mastercheifcuts-server:${IMAGE_TAG}"
           docker build -t "${IMAGE_URI}" .
           docker push "${IMAGE_URI}"
           echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
