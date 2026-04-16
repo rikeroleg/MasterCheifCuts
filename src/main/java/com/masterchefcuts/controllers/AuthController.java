@@ -3,6 +3,8 @@ package com.masterchefcuts.controllers;
 import com.masterchefcuts.dto.AuthResponse;
 import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
+import com.masterchefcuts.dto.RefreshRequest;
+import com.masterchefcuts.dto.ResetPasswordRequest;
 import com.masterchefcuts.services.AuthService;
 import com.masterchefcuts.services.EmailService;
 import jakarta.validation.Valid;
@@ -58,6 +60,11 @@ public class AuthController {
         return ResponseEntity.ok(authService.updateProfile(participantId, req));
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest req) {
+        return ResponseEntity.ok(authService.refreshToken(req.getRefreshToken()));
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<Void> forgotPassword(@RequestParam String email) {
         authService.forgotPassword(email, emailService);
@@ -65,9 +72,8 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<Void> resetPassword(@RequestParam String token,
-                                               @RequestParam String password) {
-        authService.resetPassword(token, password);
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        authService.resetPassword(req.getToken(), req.getPassword());
         return ResponseEntity.ok().build();
     }
 }
