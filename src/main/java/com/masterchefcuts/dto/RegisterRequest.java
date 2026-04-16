@@ -42,7 +42,6 @@ public class RegisterRequest {
 
     private String city;
 
-    @Size(min = 2, max = 2, message = "State must be a 2-letter code")
     private String state;
 
     private String zipCode;
