@@ -3,6 +3,7 @@ package com.masterchefcuts.services;
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
 import com.masterchefcuts.dto.CutRequest;
+import com.masterchefcuts.dto.ListingUpdateRequest;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.NotificationType;
@@ -10,9 +11,12 @@ import com.masterchefcuts.model.Claim;
 import com.masterchefcuts.model.Cut;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
+import com.masterchefcuts.model.WaitlistEntry;
 import com.masterchefcuts.repositories.ClaimRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
+import com.masterchefcuts.repositories.WaitlistRepository;
+import com.masterchefcuts.services.AuditService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,8 +49,10 @@ class ListingServiceTest {
     @Mock private ListingRepository listingRepository;
     @Mock private ParticipantRepo participantRepo;
     @Mock private ClaimRepository claimRepository;
+    @Mock private WaitlistRepository waitlistRepository;
     @Mock private NotificationService notificationService;
     @Mock private EmailService emailService;
+    @Mock private AuditService auditService;
     @Mock private StorageService storageService;
     @Mock private MultipartFile file;
 
@@ -373,5 +379,188 @@ class ListingServiceTest {
         CutRequest cr2 = new CutRequest(); cr2.setLabel("Brisket");
         req.setCuts(List.of(cr1, cr2));
         return req;
+    }
+
+    // ── updateListing ─────────────────────────────────────────────────────────
+
+    @Test
+    void updateListing_success_changesBreedOnActiveListing() {
+        ListingUpdateRequest req = new ListingUpdateRequest();
+        req.setBreed("Hereford");
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.save(any(Listing.class))).thenReturn(listing);
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+
+        ListingResponse response = listingService.updateListing(1L, "farmer-1", req);
+
+        assertThat(response).isNotNull();
+        assertThat(listing.getBreed()).isEqualTo("Hereford");
+    }
+
+    @Test
+    void updateListing_throwsWhenListingNotFound() {
+        when(listingRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> listingService.updateListing(99L, "farmer-1", new ListingUpdateRequest()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Listing not found");
+    }
+
+    @Test
+    void updateListing_throwsWhenNotAuthorized() {
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.updateListing(1L, "other-farmer", new ListingUpdateRequest()))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Not authorized");
+    }
+
+    @Test
+    void updateListing_throwsWhenListingIsComplete() {
+        listing.setStatus(ListingStatus.COMPLETE);
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.updateListing(1L, "farmer-1", new ListingUpdateRequest()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("completed or closed");
+    }
+
+    @Test
+    void updateListing_throwsWhenListingIsClosed() {
+        listing.setStatus(ListingStatus.CLOSED);
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.updateListing(1L, "farmer-1", new ListingUpdateRequest()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("completed or closed");
+    }
+
+    @Test
+    void updateListing_throwsBreedChangeOnNonActiveListing() {
+        listing.setStatus(ListingStatus.PROCESSING);
+        ListingUpdateRequest req = new ListingUpdateRequest();
+        req.setBreed("Hereford");
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.updateListing(1L, "farmer-1", req))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ACTIVE");
+    }
+
+    @Test
+    void updateListing_processingDateChanged_notifiesBuyers() {
+        java.time.LocalDate newDate = java.time.LocalDate.now().plusDays(10);
+        listing.setProcessingDate(java.time.LocalDate.now().plusDays(5));
+        ListingUpdateRequest req = new ListingUpdateRequest();
+        req.setProcessingDate(newDate);
+        Claim claim = Claim.builder().buyer(buyer).listing(listing).build();
+
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.save(any(Listing.class))).thenReturn(listing);
+        when(claimRepository.findByListingIdOrderByClaimedAtAsc(1L)).thenReturn(List.of(claim));
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+
+        listingService.updateListing(1L, "farmer-1", req);
+
+        verify(notificationService).send(eq(buyer), eq(NotificationType.PROCESSING_SET),
+                anyString(), anyString(), anyString(), eq(1L));
+    }
+
+    // ── closeListing ──────────────────────────────────────────────────────────
+
+    @Test
+    void closeListing_success_releasesUnpaidClaimsAndNotifiesBuyers() {
+        Cut cut = listing.getCuts().get(0);
+        cut.setClaimed(true);
+        cut.setClaimedBy(buyer);
+        Claim claim = Claim.builder().buyer(buyer).listing(listing).cut(cut).paid(false).build();
+
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+        when(claimRepository.findByListingIdOrderByClaimedAtAsc(1L)).thenReturn(List.of(claim));
+        when(waitlistRepository.findByListingIdOrderByJoinedAtAsc(1L)).thenReturn(List.of());
+
+        listingService.closeListing(1L, "farmer-1");
+
+        assertThat(listing.getStatus()).isEqualTo(ListingStatus.CLOSED);
+        assertThat(cut.isClaimed()).isFalse();
+        verify(claimRepository).deleteAll(anyList());
+        verify(notificationService).send(eq(buyer), eq(NotificationType.LISTING_CLOSED),
+                anyString(), anyString(), anyString(), eq(1L));
+    }
+
+    @Test
+    void closeListing_throwsWhenComplete() {
+        listing.setStatus(ListingStatus.COMPLETE);
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.closeListing(1L, "farmer-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Cannot close a completed listing");
+    }
+
+    @Test
+    void closeListing_throwsWhenAlreadyClosed() {
+        listing.setStatus(ListingStatus.CLOSED);
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.closeListing(1L, "farmer-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already closed");
+    }
+
+    @Test
+    void closeListing_notifiesWaitlistMembers() {
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+        when(claimRepository.findByListingIdOrderByClaimedAtAsc(1L)).thenReturn(List.of());
+        WaitlistEntry entry = new WaitlistEntry();
+        entry.setBuyer(buyer);
+        when(waitlistRepository.findByListingIdOrderByJoinedAtAsc(1L)).thenReturn(List.of(entry));
+
+        listingService.closeListing(1L, "farmer-1");
+
+        verify(notificationService).send(eq(buyer), eq(NotificationType.LISTING_CLOSED),
+                anyString(), anyString(), anyString(), eq(1L));
+    }
+
+    @Test
+    void closeListing_throwsWhenNotAuthorized() {
+        when(listingRepository.findByIdWithCuts(1L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> listingService.closeListing(1L, "other-farmer"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Not authorized");
+    }
+
+    // ── getAll — additional filter coverage ───────────────────────────────────
+
+    @Test
+    void getAll_withFarmerId_returnsByFarmerDirectly() {
+        when(listingRepository.findByFarmerIdOrderByPostedAtDesc(eq("farmer-1"), any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(listing)));
+
+        List<ListingResponse> result = listingService.getAll(null, null, "farmer-1", null, 0, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getFarmerId()).isEqualTo("farmer-1");
+    }
+
+    @Test
+    void getAll_withMaxPricePerLb_filtersCorrectly() {
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(listing)));
+
+        List<ListingResponse> result = listingService.getAll(null, null, null, 15.0, 0, 20);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void getAll_withBreed_filtersCorrectly() {
+        when(listingRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(listing)));
+
+        List<ListingResponse> result = listingService.getAll(null, null, null, null, 0, 20, null, "angus");
+
+        assertThat(result).hasSize(1);
     }
 }

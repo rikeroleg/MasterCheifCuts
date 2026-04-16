@@ -92,4 +92,54 @@ class ReviewControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Already reviewed"));
     }
+
+    // ── GET /api/reviews/farmer/{farmerId} ────────────────────────────────────
+
+    @Test
+    void getFarmerReviews_returns200WithList() throws Exception {
+        when(reviewService.getReviewsForFarmer("farmer-1")).thenReturn(List.of(SAMPLE));
+
+        mockMvc.perform(get("/api/reviews/farmer/farmer-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].rating").value(5))
+                .andExpect(jsonPath("$[0].buyerName").value("Bob B."));
+    }
+
+    @Test
+    void getFarmerReviews_emptyList_returns200() throws Exception {
+        when(reviewService.getReviewsForFarmer("farmer-1")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/reviews/farmer/farmer-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    // ── GET /api/reviews/has-reviewed ─────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "buyer-1", roles = {"BUYER"})
+    void hasReviewed_returnsTrue_whenReviewExists() throws Exception {
+        when(reviewService.hasReviewed("buyer-1", 1L)).thenReturn(true);
+
+        mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "buyer-1", roles = {"BUYER"})
+    void hasReviewed_returnsFalse_whenNoReview() throws Exception {
+        when(reviewService.hasReviewed("buyer-1", 1L)).thenReturn(false);
+
+        mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(false));
+    }
+
+    @Test
+    void hasReviewed_noAuth_returnsFalse() throws Exception {
+        mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(false));
+    }
 }

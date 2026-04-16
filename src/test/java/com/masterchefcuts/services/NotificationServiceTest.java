@@ -1,5 +1,6 @@
 package com.masterchefcuts.services;
 
+import com.masterchefcuts.dto.NotificationPageResponse;
 import com.masterchefcuts.dto.NotificationResponse;
 import com.masterchefcuts.enums.NotificationType;
 import com.masterchefcuts.enums.Role;
@@ -12,6 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -173,5 +177,37 @@ class NotificationServiceTest {
 
         assertThat(first).isNotNull();
         assertThat(second).isNotNull();
+    }
+
+    // ── getForRecipientPaged ──────────────────────────────────────────────────
+
+    @Test
+    void getForRecipientPaged_returnsCorrectPageResponse() {
+        Page<Notification> page = new PageImpl<>(List.of(notification), PageRequest.of(0, 20), 1);
+        when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc(eq("user-1"), any()))
+                .thenReturn(page);
+        when(notificationRepository.countByRecipientIdAndReadFalse("user-1")).thenReturn(2L);
+
+        NotificationPageResponse result = notificationService.getForRecipientPaged("user-1", 0, 20);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("Cut claimed");
+        assertThat(result.getPage()).isEqualTo(0);
+        assertThat(result.getTotalElements()).isEqualTo(1L);
+        assertThat(result.getUnreadCount()).isEqualTo(2L);
+        assertThat(result.isHasNext()).isFalse();
+    }
+
+    @Test
+    void getForRecipientPaged_emptyPage_returnsEmptyContent() {
+        Page<Notification> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(notificationRepository.findByRecipientIdOrderByCreatedAtDesc(eq("user-1"), any()))
+                .thenReturn(emptyPage);
+        when(notificationRepository.countByRecipientIdAndReadFalse("user-1")).thenReturn(0L);
+
+        NotificationPageResponse result = notificationService.getForRecipientPaged("user-1", 0, 20);
+
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getUnreadCount()).isEqualTo(0L);
     }
 }

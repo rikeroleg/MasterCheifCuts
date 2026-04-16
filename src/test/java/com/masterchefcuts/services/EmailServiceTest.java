@@ -4,6 +4,7 @@ import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resend.Resend;
 import com.resend.services.emails.Emails;
 import com.resend.services.emails.model.CreateEmailOptions;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -29,6 +31,7 @@ class EmailServiceTest {
 
     @Mock Resend resend;
     @Mock Emails emails;
+    @Spy  ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks EmailService emailService;
 
     private Participant buyer;
@@ -159,6 +162,181 @@ class EmailServiceTest {
 
         verify(emails).send(argThat((CreateEmailOptions opts) ->
                 opts.getTo() != null && opts.getTo().contains("jane@farm.com")));
+    }
+
+    // ── sendOrderConfirmationToBuyer ──────────────────────────────────────────
+
+    @Test
+    void sendOrderConfirmationToBuyer_sendsHtmlEmailToBuyer() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(150.0);
+        order.setItems("[{\"cutLabel\":\"Ribeye\",\"breed\":\"Angus\",\"animalType\":\"BEEF\",\"price\":150.0}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getTo() != null && opts.getTo().contains("bob@buyer.com")
+                        && opts.getHtml() != null));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_htmlContainsBuyerFirstName() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(150.0);
+        order.setItems("[{\"cutLabel\":\"Ribeye\",\"breed\":\"Angus\",\"animalType\":\"BEEF\",\"price\":150.0}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null && opts.getHtml().contains("Bob")));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_withNoItems_doesNotThrow() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(0.0);
+        order.setItems("[]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(any(CreateEmailOptions.class));
+    }
+
+    // ── sendNewOrderToFarmer ──────────────────────────────────────────────────
+
+    @Test
+    void sendNewOrderToFarmer_sendsHtmlEmailToFarmer() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(200.0);
+        order.setItems("[{\"cutLabel\":\"Brisket\",\"breed\":\"Angus\",\"animalType\":\"BEEF\",\"price\":200.0}]");
+
+        emailService.sendNewOrderToFarmer(order, listing, farmer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getTo() != null && opts.getTo().contains("jane@farm.com")
+                        && opts.getHtml() != null));
+    }
+
+    @Test
+    void sendNewOrderToFarmer_htmlContainsFarmerFirstName() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(200.0);
+        order.setItems("[{\"cutLabel\":\"Brisket\",\"breed\":\"Angus\",\"animalType\":\"BEEF\",\"price\":200.0}]");
+
+        emailService.sendNewOrderToFarmer(order, listing, farmer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null && opts.getHtml().contains("Jane")));
+    }
+
+    @Test
+    void sendNewOrderToFarmer_nullItems_doesNotThrow() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(100.0);
+        order.setItems(null);
+
+        emailService.sendNewOrderToFarmer(order, listing, farmer);
+
+        verify(emails).send(any(CreateEmailOptions.class));
+    }
+
+    // ── buildItemRows / parseItems / escapeHtml coverage ─────────────────────
+
+    @Test
+    void sendOrderConfirmationToBuyer_itemWithLabelFallback_usesLabelField() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(80.0);
+        order.setItems("[{\"label\":\"Chuck Roast\",\"breed\":\"Hereford\",\"animalType\":\"BEEF\",\"price\":80.0}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null && opts.getHtml().contains("Chuck Roast")));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_itemWithNoBreedOrAnimalType_showsDash() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(60.0);
+        order.setItems("[{\"cutLabel\":\"Ribs\",\"price\":60.0}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null && opts.getHtml().contains("Ribs")));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_itemWithNoPrice_showsDash() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(0.0);
+        order.setItems("[{\"cutLabel\":\"Steak\"}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null && opts.getHtml().contains("Steak")));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_multipleItems_rendersEvenOddRows() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(300.0);
+        order.setItems("[{\"cutLabel\":\"Ribeye\",\"price\":150.0},{\"cutLabel\":\"Brisket\",\"price\":150.0}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null
+                        && opts.getHtml().contains("Ribeye")
+                        && opts.getHtml().contains("Brisket")));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_itemWithHtmlCharsInLabel_escapesHtml() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(100.0);
+        order.setItems("[{\"cutLabel\":\"<script>bad</script>\",\"price\":100.0}]");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(argThat((CreateEmailOptions opts) ->
+                opts.getHtml() != null && !opts.getHtml().contains("<script>")));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_invalidItemsJson_doesNotThrow() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(50.0);
+        order.setItems("not-valid-json");
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(any(CreateEmailOptions.class));
+    }
+
+    @Test
+    void sendOrderConfirmationToBuyer_nullItemsJson_doesNotThrow() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("aabbccdd-0000-0000-0000-000000000000");
+        order.setTotalAmount(0.0);
+        order.setItems(null);
+
+        emailService.sendOrderConfirmationToBuyer(order, buyer);
+
+        verify(emails).send(any(CreateEmailOptions.class));
     }
 }
 

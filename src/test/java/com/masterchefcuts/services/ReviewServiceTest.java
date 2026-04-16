@@ -220,5 +220,48 @@ class ReviewServiceTest {
 
         verify(reviewRepository).save(argThat(r -> r.getComment().equals("Amazing beef!")));
     }
+
+    // ── getReviewsForFarmer ───────────────────────────────────────────────────
+
+    @Test
+    void getReviewsForFarmer_returnsAllFarmerReviews() {
+        Review review = Review.builder()
+                .id(1L).buyer(buyer).listing(listing).rating(5)
+                .comment("Great!").build();
+        when(reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc("farmer-1"))
+                .thenReturn(List.of(review));
+
+        List<ReviewResponse> result = reviewService.getReviewsForFarmer("farmer-1");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getRating()).isEqualTo(5);
+        assertThat(result.get(0).getComment()).isEqualTo("Great!");
+    }
+
+    @Test
+    void getReviewsForFarmer_emptyWhenNoReviews() {
+        when(reviewRepository.findByListingFarmerIdOrderByCreatedAtDesc("farmer-1"))
+                .thenReturn(List.of());
+
+        List<ReviewResponse> result = reviewService.getReviewsForFarmer("farmer-1");
+
+        assertThat(result).isEmpty();
+    }
+
+    // ── hasReviewed ───────────────────────────────────────────────────────────
+
+    @Test
+    void hasReviewed_returnsTrue_whenReviewExists() {
+        when(reviewRepository.existsByBuyerIdAndListingId("buyer-1", 1L)).thenReturn(true);
+
+        assertThat(reviewService.hasReviewed("buyer-1", 1L)).isTrue();
+    }
+
+    @Test
+    void hasReviewed_returnsFalse_whenNoReview() {
+        when(reviewRepository.existsByBuyerIdAndListingId("buyer-1", 1L)).thenReturn(false);
+
+        assertThat(reviewService.hasReviewed("buyer-1", 1L)).isFalse();
+    }
 }
 
