@@ -5,12 +5,14 @@ import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Comment;
 import com.masterchefcuts.model.Listing;
+import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ClaimRepository;
 import com.masterchefcuts.repositories.CommentRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.OrderRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
+import com.stripe.exception.StripeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -227,5 +229,153 @@ class AdminServiceTest {
         adminService.setApproved("buyer-1", true);
 
         verify(emailService, never()).sendFarmerApproved(any());
+    }
+
+    // ── getUserDetail ─────────────────────────────────────────────────────────
+
+    @Test
+    void getUserDetail_returnsMapWithUserFieldsAndOrders() {
+        Order order = new Order();
+        order.setId("ord-1");
+        order.setStatus("PAID");
+        order.setTotalAmount(150.0);
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+        when(orderRepository.findByParticipantIdOrderByOrderDateDesc("buyer-1")).thenReturn(List.of(order));
+
+        Map<String, Object> result = adminService.getUserDetail("buyer-1");
+
+        assertThat(result.get("id")).isEqualTo("buyer-1");
+        assertThat(result.get("email")).isEqualTo("bob@example.com");
+        assertThat(result.get("role")).isEqualTo("BUYER");
+        @SuppressWarnings("unchecked")
+        List<?> orders = (List<?>) result.get("orders");
+        assertThat(orders).hasSize(1);
+    }
+
+    @Test
+    void getUserDetail_throwsWhenNotFound() {
+        when(participantRepo.findById("nobody")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> adminService.getUserDetail("nobody"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("User not found");
+    }
+
+    // ── getAllOrders ──────────────────────────────────────────────────────────
+
+    @Test
+    void getAllOrders_returnsAllOrdersFromRepo() {
+        Order order = new Order();
+        order.setId("ord-1");
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(order));
+
+        List<Order> result = adminService.getAllOrders();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo("ord-1");
+    }
+
+    // ── issueRefund ───────────────────────────────────────────────────────────
+
+    @Test
+    void issueRefund_delegatesToRefundService() throws StripeException {
+        Order order = new Order();
+        order.setId("ord-1");
+        when(refundService.issueRefund("ord-1", "Test reason", true)).thenReturn(order);
+
+        Order result = adminService.issueRefund("ord-1", "Test reason");
+
+        assertThat(result.getId()).isEqualTo("ord-1");
+        verify(refundService).issueRefund("ord-1", "Test reason", true);
+    }
+
+    // ── getFinancialSummary ───────────────────────────────────────────────────
+
+    @Test
+    void getFinancialSummary_noDateFilter_sumsAllPaidOrders() {
+        Order o1 = new Order(); o1.setStatus("PAID"); o1.setTotalAmount(100.0);
+        o1.setOrderDate("2026-01-15T10:00:00");
+        Order o2 = new Order(); o2.setStatus("ACCEPTED"); o2.setTotalAmount(200.0);
+        o2.setOrderDate("2026-01-20T10:00:00");
+        Order o3 = new Order(); o3.setStatus("PENDING_PAYMENT"); o3.setTotalAmount(50.0);
+        o3.setOrderDate("2026-01-10T10:00:00");
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(o1, o2, o3));
+
+        Map<String, Object> result = adminService.getFinancialSummary(null, null);
+
+        assertThat((double) result.get("totalRevenue")).isEqualTo(300.0);
+        assertThat((double) result.get("platformFees")).isEqualTo(45.0);
+        assertThat((double) result.get("farmerPayouts")).isEqualTo(255.0);
+        assertThat(result.get("orderCount")).isEqualTo(2);
+    }
+
+    @Test
+    void getFinancialSummary_withDateRange_filtersToDateRange() {
+        Order o1 = new Order(); o1.setStatus("PAID"); o1.setTotalAmount(100.0);
+        o1.setOrderDate("2026-01-15T10:00:00");
+        Order o2 = new Order(); o2.setStatus("PAID"); o2.setTotalAmount(200.0);
+        o2.setOrderDate("2026-03-01T10:00:00");
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(o1, o2));
+
+        Map<String, Object> result = adminService.getFinancialSummary("2026-01-01", "2026-02-01");
+
+        assertThat((double) result.get("totalRevenue")).isEqualTo(100.0);
+        assertThat(result.get("orderCount")).isEqualTo(1);
+    }
+
+    // ── getFinancialOrders ────────────────────────────────────────────────────
+
+    @Test
+    void getFinancialOrders_allStatus_returnsPaidOrders() {
+        Order o = new Order(); o.setId("ord-1"); o.setStatus("PAID"); o.setTotalAmount(100.0);
+        o.setOrderDate("2026-01-15T10:00:00"); o.setParticipantId("buyer-1");
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(o));
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+
+        List<Map<String, Object>> result = adminService.getFinancialOrders("ALL", null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).get("id")).isEqualTo("ord-1");
+        assertThat(result.get(0).get("status")).isEqualTo("PAID");
+        assertThat(result.get(0).get("buyerName")).isEqualTo("Bob Buyer");
+    }
+
+    @Test
+    void getFinancialOrders_specificStatus_filtersOtherStatuses() {
+        Order o1 = new Order(); o1.setId("ord-1"); o1.setStatus("PAID"); o1.setTotalAmount(100.0);
+        o1.setOrderDate("2026-01-15T10:00:00"); o1.setParticipantId(null);
+        Order o2 = new Order(); o2.setId("ord-2"); o2.setStatus("COMPLETED"); o2.setTotalAmount(200.0);
+        o2.setOrderDate("2026-01-20T10:00:00"); o2.setParticipantId(null);
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(o1, o2));
+
+        List<Map<String, Object>> result = adminService.getFinancialOrders("PAID", null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).get("id")).isEqualTo("ord-1");
+    }
+
+    @Test
+    void getFinancialOrders_withDateRange_filtersCorrectly() {
+        Order o1 = new Order(); o1.setId("ord-1"); o1.setStatus("PAID"); o1.setTotalAmount(100.0);
+        o1.setOrderDate("2026-01-15T10:00:00"); o1.setParticipantId(null);
+        Order o2 = new Order(); o2.setId("ord-2"); o2.setStatus("PAID"); o2.setTotalAmount(200.0);
+        o2.setOrderDate("2026-03-01T10:00:00"); o2.setParticipantId(null);
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(o1, o2));
+
+        List<Map<String, Object>> result = adminService.getFinancialOrders("ALL", "2026-01-01", "2026-02-01");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).get("id")).isEqualTo("ord-1");
+    }
+
+    @Test
+    void getFinancialOrders_nonPaidStatuses_excluded() {
+        Order o = new Order(); o.setId("ord-1"); o.setStatus("PENDING_PAYMENT"); o.setTotalAmount(100.0);
+        o.setOrderDate("2026-01-15T10:00:00"); o.setParticipantId(null);
+        when(orderRepository.findAllByOrderByOrderDateDesc()).thenReturn(List.of(o));
+
+        List<Map<String, Object>> result = adminService.getFinancialOrders("ALL", null, null);
+
+        assertThat(result).isEmpty();
     }
 }

@@ -89,4 +89,125 @@ class OrderControllerTest {
         mockMvc.perform(get("/api/orders/order-1"))
                 .andExpect(status().isUnauthorized());
     }
+
+    // ── GET /api/orders/my ────────────────────────────────────────────────────
+
+    @Test
+    void myOrders_returns200WithList() throws Exception {
+        Order order = new Order();
+        order.setId("order-1"); order.setStatus("PAID");
+        when(orderRepository.findByParticipantIdOrderByOrderDateDesc("buyer-1")).thenReturn(List.of(order));
+
+        auth("buyer-1");
+        try {
+            mockMvc.perform(get("/api/orders/my"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value("order-1"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void myOrders_emptyList_returns200() throws Exception {
+        when(orderRepository.findByParticipantIdOrderByOrderDateDesc("buyer-1")).thenReturn(List.of());
+        auth("buyer-1");
+        try {
+            mockMvc.perform(get("/api/orders/my")).andExpect(status().isOk());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    // ── GET /api/orders/farmer ────────────────────────────────────────────────
+
+    @Test
+    void farmerOrders_returns200WithList() throws Exception {
+        Order order = new Order();
+        order.setId("order-2"); order.setStatus("ACCEPTED");
+        when(orderService.getFarmerOrders("farmer-1")).thenReturn(List.of(order));
+
+        auth("farmer-1");
+        try {
+            mockMvc.perform(get("/api/orders/farmer"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].id").value("order-2"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    // ── PATCH /api/orders/{orderId}/status ────────────────────────────────────
+
+    @Test
+    void updateStatus_returns200WithUpdatedOrder() throws Exception {
+        Order order = new Order();
+        order.setId("order-1"); order.setStatus("ACCEPTED");
+        when(orderService.updateOrderStatus("farmer-1", "order-1", "ACCEPTED")).thenReturn(order);
+
+        auth("farmer-1");
+        try {
+            mockMvc.perform(patch("/api/orders/order-1/status")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"ACCEPTED\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("ACCEPTED"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void updateStatus_missingStatus_returns400() throws Exception {
+        auth("farmer-1");
+        try {
+            mockMvc.perform(patch("/api/orders/order-1/status")
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    // ── POST /api/orders/{orderId}/confirm-receipt ────────────────────────────
+
+    @Test
+    void confirmReceipt_returns200WithOrder() throws Exception {
+        Order order = new Order();
+        order.setId("order-1"); order.setStatus("COMPLETED");
+        when(orderService.confirmReceipt("buyer-1", "order-1")).thenReturn(order);
+
+        auth("buyer-1");
+        try {
+            mockMvc.perform(post("/api/orders/order-1/confirm-receipt"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("COMPLETED"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void confirmReceipt_serviceThrows_returns400() throws Exception {
+        when(orderService.confirmReceipt("buyer-1", "order-1"))
+                .thenThrow(new IllegalArgumentException("Order must be in READY status"));
+
+        auth("buyer-1");
+        try {
+            mockMvc.perform(post("/api/orders/order-1/confirm-receipt"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void confirmReceipt_emptyAuth_returnsOkOrError() throws Exception {
+        Order order = new Order(); order.setId("order-1"); order.setStatus("COMPLETED");
+        when(orderService.confirmReceipt(null, "order-1")).thenReturn(order);
+        // No auth context set - principal will be null, service decides behavior
+        mockMvc.perform(post("/api/orders/order-1/confirm-receipt"))
+                .andExpect(status().isOk());
+    }
 }

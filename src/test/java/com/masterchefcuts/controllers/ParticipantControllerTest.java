@@ -2,6 +2,7 @@ package com.masterchefcuts.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.config.JwtUtil;
+import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
@@ -22,7 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-
+import java.util.Optional;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -123,6 +124,49 @@ class ParticipantControllerTest {
             mockMvc.perform(get("/api/participants/me/analytics"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalRevenue").value(0.0));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    // ── PATCH /api/participants/me/notification-preference ───────────────────────
+
+    @Test
+    void updateNotificationPreference_returns200() throws Exception {
+        Participant p = Participant.builder()
+                .id("buyer-1").firstName("Bob").lastName("Buyer")
+                .role(Role.BUYER).email("bob@buyer.com").password("pass")
+                .street("2 Main St").city("Town").state("TX").zipCode("12345")
+                .status("ACTIVE").approved(true).build();
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(p));
+
+        com.masterchefcuts.dto.AuthResponse authResp = com.masterchefcuts.dto.AuthResponse.builder()
+                .id("buyer-1").firstName("Bob").lastName("Buyer")
+                .email("bob@buyer.com").role(Role.BUYER).approved(true).build();
+        when(authService.getMe("buyer-1")).thenReturn(authResp);
+
+        auth("buyer-1");
+        try {
+            mockMvc.perform(patch("/api/participants/me/notification-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"preference\":\"ALL\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value("buyer-1"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void updateNotificationPreference_participantNotFound_returns400() throws Exception {
+        when(participantRepo.findById("buyer-2")).thenReturn(Optional.empty());
+
+        auth("buyer-2");
+        try {
+            mockMvc.perform(patch("/api/participants/me/notification-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"preference\":\"ALL\"}"))
+                    .andExpect(status().isBadRequest());
         } finally {
             SecurityContextHolder.clearContext();
         }

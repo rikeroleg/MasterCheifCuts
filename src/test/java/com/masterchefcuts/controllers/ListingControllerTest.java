@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
+import com.masterchefcuts.dto.ListingUpdateRequest;
 import com.masterchefcuts.dto.CutRequest;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
@@ -199,6 +200,51 @@ class ListingControllerTest {
                         .with(authentication(farmerAuth("farmer-1"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1));
+    }
+
+    // ── PATCH /api/listings/{id} ──────────────────────────────────────────────
+
+    @Test
+    void updateListing_returns200() throws Exception {
+        when(listingService.updateListing(eq(1L), any(), any(ListingUpdateRequest.class)))
+                .thenReturn(sampleListing);
+
+        ListingUpdateRequest req = new ListingUpdateRequest();
+        req.setBreed("Hereford");
+        req.setPricePerLb(11.0);
+
+        mockMvc.perform(patch("/api/listings/1")
+                        .with(authentication(farmerAuth("farmer-1")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void updateListing_serviceThrows_returns400() throws Exception {
+        when(listingService.updateListing(eq(99L), any(), any()))
+                .thenThrow(new RuntimeException("Listing not found"));
+
+        ListingUpdateRequest req = new ListingUpdateRequest();
+        req.setBreed("Hereford");
+
+        mockMvc.perform(patch("/api/listings/99")
+                        .with(authentication(farmerAuth("farmer-1")))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── PUT /api/listings/{id}/close ──────────────────────────────────────────
+
+    @Test
+    void closeListing_returns204() throws Exception {
+        doNothing().when(listingService).closeListing(1L, "farmer-1");
+
+        mockMvc.perform(put("/api/listings/1/close")
+                        .with(authentication(farmerAuth("farmer-1"))))
+                .andExpect(status().isNoContent());
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

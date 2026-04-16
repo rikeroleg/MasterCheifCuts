@@ -1,5 +1,6 @@
 package com.masterchefcuts.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -27,6 +29,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 class AdminControllerTest {
 
     @Autowired MockMvc mockMvc;
+    @Autowired ObjectMapper objectMapper;
 
     @MockBean AdminService adminService;
     @MockBean JwtUtil jwtUtil;
@@ -152,4 +155,105 @@ class AdminControllerTest {
 
         mockMvc.perform(delete("/api/admin/comments/99").with(authentication(adminAuth())))
                 .andExpect(status().isBadRequest());
-    }}
+    }
+
+    // ── GET /api/admin/users/{id} ─────────────────────────────────────────────
+
+    @Test
+    void getUserDetail_returns200WithUserMap() throws Exception {
+        Map<String, Object> detail = Map.of("id", "farmer-1", "email", "jane@farm.com", "orders", List.of());
+        when(adminService.getUserDetail("farmer-1")).thenReturn(detail);
+
+        mockMvc.perform(get("/api/admin/users/farmer-1").with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("farmer-1"))
+                .andExpect(jsonPath("$.email").value("jane@farm.com"));
+    }
+
+    @Test
+    void getUserDetail_serviceThrows_returns400() throws Exception {
+        when(adminService.getUserDetail("nobody")).thenThrow(new RuntimeException("User not found: nobody"));
+
+        mockMvc.perform(get("/api/admin/users/nobody").with(authentication(adminAuth())))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── GET /api/admin/orders ─────────────────────────────────────────────────
+
+    @Test
+    void getAllOrders_returns200WithList() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("ord-1");
+        order.setStatus("PAID");
+        when(adminService.getAllOrders()).thenReturn(List.of(order));
+
+        mockMvc.perform(get("/api/admin/orders").with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("ord-1"));
+    }
+
+    // ── POST /api/admin/orders/{id}/refund ────────────────────────────────────
+
+    @Test
+    void refundOrder_returns200WithOrder() throws Exception {
+        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
+        order.setId("ord-1");
+        order.setStatus("REFUNDED");
+        when(adminService.issueRefund(eq("ord-1"), anyString())).thenReturn(order);
+
+        mockMvc.perform(post("/api/admin/orders/ord-1/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("reason", "Buyer requested")))
+                        .with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("ord-1"));
+    }
+
+    @Test
+    void refundOrder_serviceThrows_returns400() throws Exception {
+        when(adminService.issueRefund(anyString(), anyString()))
+                .thenThrow(new RuntimeException("Order not found"));
+
+        mockMvc.perform(post("/api/admin/orders/bad-id/refund")
+                        .param("reason", "Test")
+                        .with(authentication(adminAuth())))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── GET /api/admin/financials/summary ─────────────────────────────────────
+
+    @Test
+    void getFinancialSummary_returns200WithSummary() throws Exception {
+        Map<String, Object> summary = Map.of("totalRevenue", 500.0, "orderCount", 3);
+        when(adminService.getFinancialSummary(null, null)).thenReturn(summary);
+
+        mockMvc.perform(get("/api/admin/financials/summary").with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRevenue").value(500.0));
+    }
+
+    @Test
+    void getFinancialSummary_withDateParams_passesThemToService() throws Exception {
+        Map<String, Object> summary = Map.of("totalRevenue", 100.0, "orderCount", 1);
+        when(adminService.getFinancialSummary("2026-01-01", "2026-02-01")).thenReturn(summary);
+
+        mockMvc.perform(get("/api/admin/financials/summary")
+                        .param("from", "2026-01-01")
+                        .param("to", "2026-02-01")
+                        .with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderCount").value(1));
+    }
+
+    // ── GET /api/admin/financials/orders ──────────────────────────────────────
+
+    @Test
+    void getFinancialOrders_returns200WithList() throws Exception {
+        List<Map<String, Object>> orders = List.of(Map.of("id", "ord-1", "status", "PAID"));
+        when(adminService.getFinancialOrders(null, null, null)).thenReturn(orders);
+
+        mockMvc.perform(get("/api/admin/financials/orders").with(authentication(adminAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("ord-1"));
+    }
+}
