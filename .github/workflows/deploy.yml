@@ -66,5 +66,6 @@ jobs:
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
+            --port 8080 \
             --set-env-vars "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},RESEND_FROM=${{ secrets.RESEND_FROM }}" \
             --quiet

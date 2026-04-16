@@ -89,6 +89,6 @@ COPY --from=extract build/target/extracted/spring-boot-loader/ ./
 COPY --from=extract build/target/extracted/snapshot-dependencies/ ./
 COPY --from=extract build/target/extracted/application/ ./
 
-EXPOSE 8081
+EXPOSE 8080
 
-ENTRYPOINT [ "java", "org.springframework.boot.loader.launch.JarLauncher" ]
+ENTRYPOINT ["java", "-Dserver.port=${PORT:-8080}", "org.springframework.boot.loader.launch.JarLauncher"]
