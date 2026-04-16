@@ -67,5 +67,6 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
-            --update-env-vars "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},RESEND_FROM=${{ secrets.RESEND_FROM }}" \
+            --timeout=600 \
+            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,JWT_SECRET=${{ secrets.JWT_SECRET }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},RESEND_FROM=${{ secrets.RESEND_FROM }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }},STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }},DB_HOST=${{ secrets.DB_HOST }},DB_PORT=${{ secrets.DB_PORT }},DB_NAME=${{ secrets.DB_NAME }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }}" \
             --quiet
