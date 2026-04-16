@@ -77,6 +77,9 @@ jobs:
             --allow-unauthenticated \
             --port 8080 \
             --timeout=600 \
-            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,RESEND_FROM=${{ secrets.RESEND_FROM }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},DB_PORT=1433" \
-            --update-secrets "JWT_SECRET=JWT_SECRET:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,DB_HOST=DB_HOST:latest,DB_NAME=DB_NAME:latest,DB_USER=DB_USER:latest,DB_PASS=DB_PASS:latest" \
+            --cpu 1 \
+            --memory 1Gi \
+            --cpu-boost \
+            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,RESEND_FROM=${{ secrets.RESEND_FROM }},DB_PORT=1433" \
+            --update-secrets "JWT_SECRET=JWT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,DB_HOST=DB_HOST:latest,DB_NAME=DB_NAME:latest,DB_USER=DB_USER:latest,DB_PASS=DB_PASS:latest" \
             --quiet
