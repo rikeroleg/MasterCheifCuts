@@ -36,19 +36,15 @@ public class RegisterRequest {
 
     private String shopName;
 
-    @NotBlank(message = "Street address is required")
     private String street;
 
     private String apt;
 
-    @NotBlank
     private String city;
 
-    @NotBlank
     @Size(min = 2, max = 2, message = "State must be a 2-letter code")
     private String state;
 
-    @NotBlank
     private String zipCode;
 
     // Optional: referral code (the referring user's ID) from ?ref= query param
