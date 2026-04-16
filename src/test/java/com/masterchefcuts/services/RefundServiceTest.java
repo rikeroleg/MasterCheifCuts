@@ -1,6 +1,7 @@
 package com.masterchefcuts.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.masterchefcuts.model.Claim;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.enums.Role;
@@ -17,11 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -36,7 +39,7 @@ class RefundServiceTest {
     @Mock private ParticipantRepo participantRepo;
     @Mock private ClaimRepository claimRepository;
     @Mock private NotificationService notificationService;
-    @Mock private ObjectMapper objectMapper;
+    @Spy  private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks private RefundService refundService;
 
@@ -218,5 +221,53 @@ class RefundServiceTest {
         refundService.handleDisputeCreated("pi_test_123", "dp_123", 5000L);
 
         verify(orderRepository, never()).save(any());
+    }
+
+    // ── reverseClaimPayments (via handleChargeRefunded) ─────────────────────────────
+
+    @Test
+    void handleChargeRefunded_withCutIdsInItems_reversesClaims() {
+        paidOrder.setItems("[{\"cutId\":10}]");
+        when(orderRepository.findByStripePaymentIntentId("pi_test_123"))
+                .thenReturn(Optional.of(paidOrder));
+        when(orderRepository.save(any())).thenReturn(paidOrder);
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+
+        Claim claim = new Claim();
+        claim.setPaid(true);
+        when(claimRepository.findByCutIdIn(List.of(10L))).thenReturn(List.of(claim));
+
+        refundService.handleChargeRefunded("pi_test_123", 5000L);
+
+        assertThat(claim.isPaid()).isFalse();
+        verify(claimRepository).saveAll(List.of(claim));
+    }
+
+    @Test
+    void handleChargeRefunded_withBlankItems_doesNotReverseClaims() {
+        paidOrder.setItems("");
+        when(orderRepository.findByStripePaymentIntentId("pi_test_123"))
+                .thenReturn(Optional.of(paidOrder));
+        when(orderRepository.save(any())).thenReturn(paidOrder);
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+
+        refundService.handleChargeRefunded("pi_test_123", 5000L);
+
+        verify(claimRepository, never()).saveAll(any());
+    }
+
+    // ── appendNote (via handleDisputeCreated with existing notes) ─────────────────
+
+    @Test
+    void handleDisputeCreated_existingNotes_appendsToNote() {
+        paidOrder.setNotes("Previous note");
+        when(orderRepository.findByStripePaymentIntentId("pi_test_123"))
+                .thenReturn(Optional.of(paidOrder));
+        when(orderRepository.save(any())).thenReturn(paidOrder);
+
+        refundService.handleDisputeCreated("pi_test_123", "dp_456", 3000L);
+
+        assertThat(paidOrder.getNotes()).startsWith("Previous note | ");
+        assertThat(paidOrder.getNotes()).contains("dp_456");
     }
 }

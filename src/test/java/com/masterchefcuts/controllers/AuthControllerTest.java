@@ -151,18 +151,39 @@ class AuthControllerTest {
 
     @Test
     void resetPassword_returns200() throws Exception {
-        doNothing().when(authService).resetPassword("reset-token", "newpassword1");
+        doNothing().when(authService).resetPassword("reset-token", "NewPass1!");
 
         ResetPasswordRequest req = new ResetPasswordRequest();
         req.setToken("reset-token");
-        req.setPassword("newpassword1");
+        req.setPassword("NewPass1!");
 
         mockMvc.perform(post("/api/auth/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk());
     }
+    // ── refresh ─────────────────────────────────────────────────────────────────
 
+    @Test
+    void refresh_returns200WithToken() throws Exception {
+        when(authService.refreshToken("my-refresh-token")).thenReturn(SAMPLE_RESPONSE);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"my-refresh-token\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("user-1"));
+    }
+
+    // ── resendVerification ────────────────────────────────────────────────────────
+
+    @Test
+    void resendVerification_returns200() throws Exception {
+        doNothing().when(authService).resendVerification(eq("john@example.com"), any(EmailService.class));
+
+        mockMvc.perform(post("/api/auth/resend-verification").param("email", "john@example.com"))
+                .andExpect(status().isOk());
+    }
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private RegisterRequest buildRegisterRequest() {

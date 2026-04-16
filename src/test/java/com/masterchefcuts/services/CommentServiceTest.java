@@ -14,8 +14,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -165,5 +171,56 @@ class CommentServiceTest {
 
         assertThatThrownBy(() -> commentService.deleteComment(99L, "user-1", "BUYER"))
                 .hasMessageContaining("Comment not found");
+    }
+
+    // ── getComments ───────────────────────────────────────────────────────────
+
+    @Test
+    void getComments_returnsMappedList() {
+        Comment c = Comment.builder().id(1L).listing(listing).author(author)
+                .body("Nice listing!").createdAt(LocalDateTime.now()).build();
+        when(commentRepository.findByListingIdWithAuthor(1L)).thenReturn(List.of(c));
+
+        List<CommentResponse> result = commentService.getComments(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getBody()).isEqualTo("Nice listing!");
+        assertThat(result.get(0).getAuthorName()).isEqualTo("Alice Smith");
+    }
+
+    @Test
+    void getComments_returnsEmptyList() {
+        when(commentRepository.findByListingIdWithAuthor(99L)).thenReturn(List.of());
+
+        assertThat(commentService.getComments(99L)).isEmpty();
+    }
+
+    // ── getCommentsPaged ──────────────────────────────────────────────────────
+
+    @Test
+    void getCommentsPaged_returnsPageMap() {
+        Comment c = Comment.builder().id(1L).listing(listing).author(author)
+                .body("Paged comment").createdAt(LocalDateTime.now()).build();
+        Page<Comment> page = new PageImpl<>(List.of(c), PageRequest.of(0, 10), 1);
+        when(commentRepository.findByListingIdWithAuthor(eq(1L), any(Pageable.class))).thenReturn(page);
+
+        Map<String, Object> result = commentService.getCommentsPaged(1L, 0, 10);
+
+        assertThat(result).containsKey("content");
+        assertThat((List<?>) result.get("content")).hasSize(1);
+        assertThat(result.get("page")).isEqualTo(0);
+        assertThat(result.get("totalElements")).isEqualTo(1L);
+        assertThat(result.get("hasNext")).isEqualTo(false);
+    }
+
+    @Test
+    void getCommentsPaged_emptyPage_returnsEmptyContent() {
+        Page<Comment> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
+        when(commentRepository.findByListingIdWithAuthor(eq(2L), any(Pageable.class))).thenReturn(emptyPage);
+
+        Map<String, Object> result = commentService.getCommentsPaged(2L, 0, 10);
+
+        assertThat((List<?>) result.get("content")).isEmpty();
+        assertThat(result.get("totalElements")).isEqualTo(0L);
     }
 }
