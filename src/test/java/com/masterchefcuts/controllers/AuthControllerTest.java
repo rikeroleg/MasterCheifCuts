@@ -151,11 +151,11 @@ class AuthControllerTest {
 
     @Test
     void resetPassword_returns200() throws Exception {
-        doNothing().when(authService).resetPassword("reset-token", "newpassword1");
+        doNothing().when(authService).resetPassword("reset-token", "NewPass1!");
 
         ResetPasswordRequest req = new ResetPasswordRequest();
         req.setToken("reset-token");
-        req.setPassword("newpassword1");
+        req.setPassword("NewPass1!");
 
         mockMvc.perform(post("/api/auth/reset-password")
                         .contentType(MediaType.APPLICATION_JSON)
