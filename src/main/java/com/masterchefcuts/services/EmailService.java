@@ -5,12 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
+import com.resend.Resend;
+import com.resend.services.emails.model.CreateEmailOptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -24,10 +23,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final Resend resend;
     private final ObjectMapper objectMapper;
 
-    @Value("${app.mail.from}")
+    @Value("${resend.from}")
     private String from;
 
     @Async
@@ -116,8 +115,6 @@ public class EmailService {
             log.error("Failed to send order confirmation to buyer {}: {}", buyer.getEmail(), e.getMessage());
         }
     }
-
-    @Async
     public void sendNewOrderToFarmer(Order order, Listing listing, Participant farmer) {
         try {
             String subject = "💵 New Order Received — MasterChef Cuts #" + order.getId().substring(0, 8).toUpperCase();
@@ -244,20 +241,6 @@ public class EmailService {
         return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 
-    private void sendHtml(String to, String subject, String html) {
-        try {
-            var msg = mailSender.createMimeMessage();
-            var helper = new MimeMessageHelper(msg, false, "UTF-8");
-            helper.setFrom(from);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(html, true);
-            mailSender.send(msg);
-        } catch (Exception e) {
-            log.error("Failed to send HTML email to {}: {}", to, e.getMessage());
-        }
-    }
-
     @Async
     public void sendOrderAccepted(Order order, Participant buyer) {
         String subject = "✅ Your order has been accepted — MasterChef Cuts";
@@ -302,14 +285,27 @@ public class EmailService {
         send(farmer.getEmail(), subject, body);
     }
 
+    private void sendHtml(String to, String subject, String html) {
+        try {
+            resend.emails().send(CreateEmailOptions.builder()
+                    .from(from)
+                    .to(to)
+                    .subject(subject)
+                    .html(html)
+                    .build());
+        } catch (Exception e) {
+            log.error("Failed to send HTML email to {}: {}", to, e.getMessage());
+        }
+    }
+
     private void send(String to, String subject, String body) {
         try {
-            SimpleMailMessage msg = new SimpleMailMessage();
-            msg.setFrom(from);
-            msg.setTo(to);
-            msg.setSubject(subject);
-            msg.setText(body);
-            mailSender.send(msg);
+            resend.emails().send(CreateEmailOptions.builder()
+                    .from(from)
+                    .to(to)
+                    .subject(subject)
+                    .text(body)
+                    .build());
         } catch (Exception e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage());
         }

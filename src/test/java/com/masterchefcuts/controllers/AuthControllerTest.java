@@ -5,6 +5,7 @@ import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.dto.AuthResponse;
 import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
+import com.masterchefcuts.dto.ResetPasswordRequest;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.services.AuthService;
 import com.masterchefcuts.services.EmailService;
@@ -150,11 +151,15 @@ class AuthControllerTest {
 
     @Test
     void resetPassword_returns200() throws Exception {
-        doNothing().when(authService).resetPassword("reset-token", "new-pass");
+        doNothing().when(authService).resetPassword("reset-token", "newpassword1");
+
+        ResetPasswordRequest req = new ResetPasswordRequest();
+        req.setToken("reset-token");
+        req.setPassword("newpassword1");
 
         mockMvc.perform(post("/api/auth/reset-password")
-                        .param("token", "reset-token")
-                        .param("password", "new-pass"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk());
     }
 

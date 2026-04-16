@@ -66,6 +66,10 @@ public class Participant {
     @Column(length = 500)
     private String certifications;
 
+    // Refresh tokens (opaque UUID, rotated on every use)
+    private String refreshToken;
+    private java.time.LocalDateTime refreshTokenExpiry;
+
     // Stripe Connect — farmer payout account
     @Column(name = "stripe_account_id")
     private String stripeAccountId;
