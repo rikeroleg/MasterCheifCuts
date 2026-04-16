@@ -58,6 +58,15 @@ jobs:
           docker push us-central1-docker.pkg.dev/gen-lang-client-0273518275/mastercheifcuts/masterchefcuts:${{ github.sha }}
           docker push us-central1-docker.pkg.dev/gen-lang-client-0273518275/mastercheifcuts/masterchefcuts:latest
 
+      - name: Normalize Cloud Run env var types
+        run: |
+          # Remove legacy literal env vars so secret bindings can be applied without type conflicts.
+          gcloud run services update masterchefcuts \
+            --project gen-lang-client-0273518275 \
+            --region us-central1 \
+            --remove-env-vars JWT_SECRET,RESEND_API_KEY,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_PORT,DB_NAME,DB_USER,DB_PASS \
+            --quiet || true
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy masterchefcuts \
@@ -73,9 +82,9 @@ jobs:
             --update-secrets "RESEND_API_KEY=RESEND_API_KEY:latest" \
             --update-secrets "STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest" \
             --update-secrets "STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest" \
-                        --update-secrets "DB_HOST=DB_HOST:latest" \
-                        --update-secrets "DB_PORT=DB_PORT:latest" \
-                        --update-secrets "DB_NAME=DB_NAME:latest" \
-                        --update-secrets "DB_USER=DB_USER:latest" \
-                        --update-secrets "DB_PASS=DB_PASS:latest" \
+            --update-secrets "DB_HOST=DB_HOST:latest" \
+            --update-secrets "DB_PORT=DB_PORT:latest" \
+            --update-secrets "DB_NAME=DB_NAME:latest" \
+            --update-secrets "DB_USER=DB_USER:latest" \
+            --update-secrets "DB_PASS=DB_PASS:latest" \
             --quiet
