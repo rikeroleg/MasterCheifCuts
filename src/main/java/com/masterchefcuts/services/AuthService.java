@@ -92,8 +92,12 @@ public class AuthService {
         if (emailVerificationEnabled && !participant.isEmailVerified())
             throw new RuntimeException("EMAIL_NOT_VERIFIED");
 
-        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
-        return buildResponse(participant, token);
+        String token   = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
+        String refresh = java.util.UUID.randomUUID().toString();
+        participant.setRefreshToken(refresh);
+        participant.setRefreshTokenExpiry(LocalDateTime.now().plusDays(7));
+        participantRepo.save(participant);
+        return buildResponse(participant, token, refresh);
     }
 
     @Transactional
@@ -155,6 +159,21 @@ public class AuthService {
     }
 
     @Transactional
+    public AuthResponse refreshToken(String refreshToken) {
+        Participant p = participantRepo.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired refresh token."));
+        if (p.getRefreshTokenExpiry() == null || p.getRefreshTokenExpiry().isBefore(LocalDateTime.now()))
+            throw new RuntimeException("Refresh token has expired.");
+        // Rotate: invalidate the old token immediately
+        String newAccess   = jwtUtil.generateToken(p.getId(), p.getRole().name());
+        String newRefresh  = java.util.UUID.randomUUID().toString();
+        p.setRefreshToken(newRefresh);
+        p.setRefreshTokenExpiry(LocalDateTime.now().plusDays(7));
+        participantRepo.save(p);
+        return buildResponse(p, newAccess, newRefresh);
+    }
+
+    @Transactional
     public void resetPassword(String token, String newPassword) {
         Participant p = participantRepo.findByResetToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid or expired reset link."));
@@ -167,8 +186,13 @@ public class AuthService {
     }
 
     private AuthResponse buildResponse(Participant p, String token) {
+        return buildResponse(p, token, null);
+    }
+
+    private AuthResponse buildResponse(Participant p, String token, String refreshToken) {
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .id(p.getId())
                 .firstName(p.getFirstName())
                 .lastName(p.getLastName())
