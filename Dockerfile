@@ -93,4 +93,4 @@ EXPOSE 8080
 
 ENV LOADER_PATH="dependencies/,snapshot-dependencies/,spring-boot-loader/,application/"
 
-ENTRYPOINT ["java", "-Dserver.port=${PORT}", "-Dloader.path=${LOADER_PATH}", "org.springframework.boot.loader.launch.PropertiesLauncher"]
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -Dloader.path=${LOADER_PATH} org.springframework.boot.loader.launch.PropertiesLauncher"]
