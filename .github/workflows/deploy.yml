@@ -64,7 +64,7 @@ jobs:
           gcloud run services update masterchefcuts \
             --project gen-lang-client-0273518275 \
             --region us-central1 \
-            --remove-secrets JWT_SECRET,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_NAME,DB_USER,DB_PASS \
+            --remove-secrets JWT_SECRET,RESEND_API_KEY,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_NAME,DB_USER,DB_PASS \
             --quiet || true
 
       - name: Deploy to Cloud Run
