@@ -16,7 +16,7 @@ import java.nio.file.StandardCopyOption;
  * Local-dev implementation of StorageService.
  * Files are written to {java.io.tmpdir}/masterchefcuts-uploads/ and a
  * file:// URI is returned.  This lets photo upload work end-to-end in dev
- * without any cloud credentials.  Switch to the "aws" or "gcp" profile in
+ * without any cloud credentials.  Switch to the "gcp" profile in
  * staging/production to use real object storage.
  */
 @Service
