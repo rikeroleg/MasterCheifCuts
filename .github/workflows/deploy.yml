@@ -60,11 +60,14 @@ jobs:
 
       - name: Normalize Cloud Run env var types
         run: |
-          # Remove any legacy Secret Manager bindings so env var deploy can proceed cleanly.
+          # Remove ALL legacy Secret Manager bindings so env var deploy can proceed cleanly.
+          # If a secret doesn't exist in Secret Manager, Cloud Run silently refuses to start
+          # the container (no stdout/stderr at all). The || true prevents failure when
+          # a secret was already removed or never existed.
           gcloud run services update masterchefcuts \
             --project gen-lang-client-0273518275 \
             --region us-central1 \
-            --remove-secrets JWT_SECRET,RESEND_API_KEY,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_NAME,DB_USER,DB_PASS \
+            --remove-secrets JWT_SECRET,RESEND_API_KEY,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_NAME,DB_USER,DB_PASS,MAIL_HOST,MAIL_PORT,MAIL_USER,MAIL_PASS,MAIL_FROM,STRIPE_CONNECT_RETURN_URL,STRIPE_CONNECT_REFRESH_URL,GCS_BUCKET,GCP_PROJECT_ID \
             --quiet || true
 
       - name: Deploy to Cloud Run
