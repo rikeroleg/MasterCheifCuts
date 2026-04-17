@@ -44,7 +44,7 @@ public class ListingService {
     private final EmailService emailService;
     private final AuditService auditService;
 
-    // Optional — present only when a storage profile (aws/gcp) is enabled.
+    // Optional — present only when a storage profile (gcp/local) is enabled.
     @Autowired(required = false)
     private StorageService storageService;
 

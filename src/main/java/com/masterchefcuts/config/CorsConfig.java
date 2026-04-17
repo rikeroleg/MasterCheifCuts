@@ -14,7 +14,7 @@ public class CorsConfig {
 
     // Required — set via cors.allowed-origins in the active profile's properties.
     // Local profile: http://localhost:*,http://127.0.0.1:*
-    // AWS profile:   https://*.masterchefcuts.com
+    // GCP profile:   https://*.masterchefcuts.com
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
