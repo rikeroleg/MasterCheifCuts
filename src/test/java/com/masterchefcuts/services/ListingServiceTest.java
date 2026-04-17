@@ -266,7 +266,7 @@ class ListingServiceTest {
     // ── uploadPhoto ───────────────────────────────────────────────────────────
 
     @Test
-    void uploadPhoto_s3NotAvailable_throwsRuntime() {
+    void uploadPhoto_storageNotAvailable_throwsRuntime() {
         // storageService is NOT injected into listingService (optional @Autowired) — remains null
         assertThatThrownBy(() -> listingService.uploadPhoto(1L, "farmer-1", file))
                 .isInstanceOf(RuntimeException.class)
