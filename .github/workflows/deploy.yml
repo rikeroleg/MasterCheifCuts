@@ -60,11 +60,11 @@ jobs:
 
       - name: Normalize Cloud Run env var types
         run: |
-          # Remove legacy literal env vars so secret bindings can be applied without type conflicts.
+          # Remove any legacy Secret Manager bindings so env var deploy can proceed cleanly.
           gcloud run services update masterchefcuts \
             --project gen-lang-client-0273518275 \
             --region us-central1 \
-            --remove-env-vars JWT_SECRET,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_PORT,DB_NAME,DB_USER,DB_PASS \
+            --remove-secrets JWT_SECRET,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,DB_HOST,DB_NAME,DB_USER,DB_PASS \
             --quiet || true
 
       - name: Deploy to Cloud Run
@@ -80,6 +80,5 @@ jobs:
             --cpu 1 \
             --memory 1Gi \
             --cpu-boost \
-            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,RESEND_FROM=${{ secrets.RESEND_FROM }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},DB_PORT=1433" \
-            --update-secrets "JWT_SECRET=JWT_SECRET:latest,STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest,STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest,DB_HOST=DB_HOST:latest,DB_NAME=DB_NAME:latest,DB_USER=DB_USER:latest,DB_PASS=DB_PASS:latest" \
+            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,RESEND_FROM=${{ secrets.RESEND_FROM }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},JWT_SECRET=${{ secrets.JWT_SECRET }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }},STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }},DB_HOST=${{ secrets.DB_HOST }},DB_PORT=1433,DB_NAME=${{ secrets.DB_NAME }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }}" \
             --quiet
