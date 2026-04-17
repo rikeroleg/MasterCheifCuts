@@ -45,29 +45,7 @@ RUN --mount=type=bind,source=pom.xml,target=pom.xml \
 
 ################################################################################
 
-# Create a stage for extracting the application into separate layers.
-# Take advantage of Spring Boot's layer tools and Docker's caching by extracting
-# the packaged application into separate layers that can be copied into the final stage.
-# See Spring's docs for reference:
-# https://docs.spring.io/spring-boot/docs/current/reference/html/container-images.html
-FROM package as extract
-
-WORKDIR /build
-
-RUN java -Djarmode=layertools -jar target/app.jar extract --destination target/extracted
-
-################################################################################
-
-# Create a new stage for running the application that contains the minimal
-# runtime dependencies for the application. This often uses a different base
-# image from the install or build stage where the necessary files are copied
-# from the install stage.
-#
-# The example below uses eclipse-turmin's JRE image as the foundation for running the app.
-# By specifying the "17-jre-jammy" tag, it will also use whatever happens to be the
-# most recent version of that tag when you build your Dockerfile.
-# If reproducability is important, consider using a specific digest SHA, like
-# eclipse-temurin@sha256:99cede493dfd88720b610eb8077c8688d3cca50003d76d1d539b0efc8cca72b4.
+# Final stage: minimal JRE image with the executable jar.
 FROM eclipse-temurin:17-jre-jammy AS final
 
 # Create a non-privileged user that the app will run under.
@@ -81,16 +59,11 @@ RUN adduser \
     --no-create-home \
     --uid "${UID}" \
     appuser
-USER appuser
 
-# Copy the executable from the "package" stage.
-COPY --from=extract build/target/extracted/dependencies/ ./
-COPY --from=extract build/target/extracted/spring-boot-loader/ ./
-COPY --from=extract build/target/extracted/snapshot-dependencies/ ./
-COPY --from=extract build/target/extracted/application/ ./
+COPY --from=package --chown=appuser:appuser /build/target/app.jar /app/app.jar
+
+USER appuser
 
 EXPOSE 8080
 
-ENV LOADER_PATH="dependencies/,snapshot-dependencies/,spring-boot-loader/,application/"
-
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -Dloader.path=${LOADER_PATH} org.springframework.boot.loader.launch.PropertiesLauncher"]
+ENTRYPOINT ["sh", "-c", "exec java -jar /app/app.jar --server.port=${PORT:-8080}"]
