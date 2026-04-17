@@ -2,17 +2,17 @@ package com.masterchefcuts.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.filter.CorsFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CorsConfigTest {
 
     @Test
-    void corsFilter_beanIsCreated() {
+    void corsConfigurationSource_beanIsCreated() {
         CorsConfig config = new CorsConfig();
         ReflectionTestUtils.setField(config, "allowedOrigins", "http://localhost:*,https://*.masterchefcuts.com");
-        CorsFilter filter = config.corsFilter();
-        assertThat(filter).isNotNull();
+        CorsConfigurationSource source = config.corsConfigurationSource();
+        assertThat(source).isNotNull();
     }
 }
