@@ -1,6 +1,7 @@
 package com.masterchefcuts.controllers;
 
 import com.masterchefcuts.dto.AuthResponse;
+import com.masterchefcuts.enums.EmailPreference;
 import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.model.Participant;
@@ -97,5 +98,26 @@ public class ParticipantController {
         result.put("averageRating", Math.round(averageRating * 10.0) / 10.0);
         result.put("totalReviews", reviews.size());
         return ResponseEntity.ok(result);
+    }
+
+    @PatchMapping("/me/email-preference")
+    public ResponseEntity<AuthResponse> updateEmailPreference(
+            @AuthenticationPrincipal String participantId,
+            @RequestBody Map<String, String> body) {
+        String raw = body.get("emailPreference");
+        if (raw == null || raw.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        EmailPreference pref;
+        try {
+            pref = EmailPreference.valueOf(raw.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        Participant p = participantRepo.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
+        p.setEmailPreference(pref);
+        participantRepo.save(p);
+        return ResponseEntity.ok(authService.getMe(participantId));
     }
 }

@@ -142,4 +142,31 @@ class ReviewControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value(false));
     }
+
+    // ── GET /api/reviews/featured ─────────────────────────────────────────────────
+
+    @Test
+    void getFeaturedReviews_returns200WithEnrichedList() throws Exception {
+        ReviewResponse featured = ReviewResponse.builder()
+                .id(2L).listingId(1L).buyerName("Alice A.").rating(5)
+                .comment("Absolutely incredible beef!").createdAt(LocalDateTime.now())
+                .animalType("BEEF").farmerShopName("Happy Acres Farm")
+                .build();
+        when(reviewService.getFeaturedReviews()).thenReturn(List.of(featured));
+
+        mockMvc.perform(get("/api/reviews/featured"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].animalType").value("BEEF"))
+                .andExpect(jsonPath("$[0].farmerShopName").value("Happy Acres Farm"))
+                .andExpect(jsonPath("$[0].rating").value(5));
+    }
+
+    @Test
+    void getFeaturedReviews_emptyList_returns200() throws Exception {
+        when(reviewService.getFeaturedReviews()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/reviews/featured"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
 }
