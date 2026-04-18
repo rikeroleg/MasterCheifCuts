@@ -19,6 +19,11 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
+    @GetMapping("/api/reviews/featured")
+    public ResponseEntity<List<ReviewResponse>> getFeaturedReviews() {
+        return ResponseEntity.ok(reviewService.getFeaturedReviews());
+    }
+
     @GetMapping("/api/listings/{listingId}/reviews")
     public ResponseEntity<List<ReviewResponse>> getReviews(@PathVariable Long listingId) {
         return ResponseEntity.ok(reviewService.getReviewsForListing(listingId));

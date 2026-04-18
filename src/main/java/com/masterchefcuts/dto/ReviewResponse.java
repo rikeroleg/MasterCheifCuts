@@ -15,4 +15,7 @@ public class ReviewResponse {
     private int rating;
     private String comment;
     private LocalDateTime createdAt;
+    // Populated for /api/reviews/featured — used by homepage testimonials
+    private String animalType;
+    private String farmerShopName;
 }

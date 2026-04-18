@@ -197,4 +197,58 @@ class ParticipantControllerTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    // ── PATCH /api/participants/me/email-preference ───────────────────────────────────
+
+    @Test
+    void updateEmailPreference_returns200() throws Exception {
+        Participant p = Participant.builder()
+                .id("buyer-1").firstName("Bob").lastName("Buyer")
+                .role(Role.BUYER).email("bob@buyer.com").password("pass")
+                .street("2 Main St").city("Town").state("TX").zipCode("12345")
+                .status("ACTIVE").approved(true).build();
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(p));
+
+        com.masterchefcuts.dto.AuthResponse authResp = com.masterchefcuts.dto.AuthResponse.builder()
+                .id("buyer-1").firstName("Bob").lastName("Buyer")
+                .email("bob@buyer.com").role(Role.BUYER).approved(true).build();
+        when(authService.getMe("buyer-1")).thenReturn(authResp);
+
+        auth("buyer-1");
+        try {
+            mockMvc.perform(patch("/api/participants/me/email-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"emailPreference\":\"IMPORTANT\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value("buyer-1"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void updateEmailPreference_invalidValue_returns400() throws Exception {
+        auth("buyer-1");
+        try {
+            mockMvc.perform(patch("/api/participants/me/email-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"emailPreference\":\"GARBAGE\"}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void updateEmailPreference_missingKey_returns400() throws Exception {
+        auth("buyer-1");
+        try {
+            mockMvc.perform(patch("/api/participants/me/email-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
 }
