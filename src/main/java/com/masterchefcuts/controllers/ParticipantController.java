@@ -36,6 +36,7 @@ public class ParticipantController {
     private final OrderService orderService;
     private final ReviewRepository reviewRepository;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/add")
     public String add(@RequestBody Participant participant) {
         participantService.addParticipant(participant);
@@ -46,7 +47,16 @@ public class ParticipantController {
     public ResponseEntity<AuthResponse> updateNotificationPreference(
             @AuthenticationPrincipal String participantId,
             @RequestBody Map<String, String> body) {
-        NotificationPreference pref = NotificationPreference.valueOf(body.get("preference").toUpperCase());
+        String raw = body.get("preference");
+        if (raw == null || raw.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        NotificationPreference pref;
+        try {
+            pref = NotificationPreference.valueOf(raw.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
         Participant p = participantRepo.findById(participantId)
                 .orElseThrow(() -> new RuntimeException("Participant not found"));
         p.setNotificationPreference(pref);

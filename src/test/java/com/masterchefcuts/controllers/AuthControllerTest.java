@@ -6,6 +6,7 @@ import com.masterchefcuts.dto.AuthResponse;
 import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
 import com.masterchefcuts.dto.ResetPasswordRequest;
+import com.masterchefcuts.dto.UpdateProfileRequest;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.services.AuthService;
 import com.masterchefcuts.services.EmailService;
@@ -124,7 +125,7 @@ class AuthControllerTest {
 
     @Test
     void updateMe_returns200() throws Exception {
-        when(authService.updateProfile(any(), any(RegisterRequest.class)))
+        when(authService.updateProfile(any(), any(UpdateProfileRequest.class)))
                 .thenReturn(SAMPLE_RESPONSE);
         SecurityContextHolder.getContext().setAuthentication(stringAuth("user-1"));
         try {

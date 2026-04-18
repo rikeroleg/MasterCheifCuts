@@ -4,6 +4,7 @@ import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.dto.AuthResponse;
 import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
+import com.masterchefcuts.dto.UpdateProfileRequest;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
@@ -116,7 +117,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse updateProfile(String participantId, RegisterRequest req) {
+    public AuthResponse updateProfile(String participantId, UpdateProfileRequest req) {
         Participant participant = participantRepo.findById(participantId)
                 .orElseThrow(() -> new RuntimeException("Participant not found"));
 

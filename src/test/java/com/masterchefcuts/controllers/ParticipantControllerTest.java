@@ -171,4 +171,30 @@ class ParticipantControllerTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    @Test
+    void updateNotificationPreference_missingKey_returns400() throws Exception {
+        auth("buyer-1");
+        try {
+            mockMvc.perform(patch("/api/participants/me/notification-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void updateNotificationPreference_invalidValue_returns400() throws Exception {
+        auth("buyer-1");
+        try {
+            mockMvc.perform(patch("/api/participants/me/notification-preference")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"preference\":\"NOT_A_VALID_ENUM\"}"))
+                    .andExpect(status().isBadRequest());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
 }

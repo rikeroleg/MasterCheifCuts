@@ -39,4 +39,13 @@ public class ClaimController {
             @AuthenticationPrincipal String buyerId) {
         return ResponseEntity.ok(claimService.getClaimResponsesForBuyer(buyerId));
     }
+
+    @DeleteMapping("/api/claims/{claimId}")
+    @PreAuthorize("hasRole('BUYER')")
+    public ResponseEntity<Void> unclaimCut(
+            @PathVariable Long claimId,
+            @AuthenticationPrincipal String buyerId) {
+        claimService.unclaimCut(claimId, buyerId);
+        return ResponseEntity.noContent().build();
+    }
 }

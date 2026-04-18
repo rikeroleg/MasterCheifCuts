@@ -13,6 +13,7 @@ import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.AnimalRequestRepository;
 import com.masterchefcuts.repositories.ClaimRepository;
+import org.springframework.security.access.AccessDeniedException;
 import com.masterchefcuts.repositories.CutRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
@@ -56,7 +57,8 @@ public class AnimalRequestService {
 
     @Transactional(readOnly = true)
     public List<AnimalRequestResponse> getOpen() {
-        return animalRequestRepository.findByStatusOrderByCreatedAtDesc(AnimalRequestStatus.OPEN)
+        return animalRequestRepository
+                .findByStatusInOrderByCreatedAtDesc(List.of(AnimalRequestStatus.OPEN, AnimalRequestStatus.FULFILLED))
                 .stream().map(this::toDto).collect(Collectors.toList());
     }
 
@@ -155,12 +157,31 @@ public class AnimalRequestService {
     }
 
     @Transactional
+    public AnimalRequestResponse updateRequest(Long id, String buyerId, AnimalRequestRequest req) {
+        AnimalRequest request = animalRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Request not found"));
+
+        if (!request.getBuyer().getId().equals(buyerId))
+            throw new AccessDeniedException("Not authorized");
+
+        if (request.getStatus() != AnimalRequestStatus.OPEN)
+            throw new RuntimeException("Only open requests can be edited");
+
+        request.setAnimalType(req.getAnimalType());
+        request.setBreed(req.getBreed());
+        request.setDescription(req.getDescription());
+        request.setZipCode(req.getZipCode());
+        request.setCutLabels(new ArrayList<>(req.getCutLabels()));
+        return toDto(animalRequestRepository.save(request));
+    }
+
+    @Transactional
     public void cancel(Long requestId, String buyerId) {
         AnimalRequest request = animalRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Request not found"));
 
         if (!request.getBuyer().getId().equals(buyerId))
-            throw new RuntimeException("Not authorized");
+            throw new AccessDeniedException("Not authorized");
 
         if (request.getStatus() != AnimalRequestStatus.OPEN)
             throw new RuntimeException("Only open requests can be cancelled");

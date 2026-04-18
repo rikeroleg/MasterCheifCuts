@@ -5,6 +5,7 @@ import com.masterchefcuts.dto.PaymentIntentRequest;
 import com.masterchefcuts.dto.PaymentIntentResponse;
 import com.masterchefcuts.services.PaymentService;
 import com.stripe.exception.StripeException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class PaymentController {
 
     @PreAuthorize("hasRole('BUYER')")
     @PostMapping("/api/payments/intent")
-    public ResponseEntity<PaymentIntentResponse> createIntent(@RequestBody PaymentIntentRequest request) throws StripeException {
+    public ResponseEntity<PaymentIntentResponse> createIntent(@Valid @RequestBody PaymentIntentRequest request) throws StripeException {
         return ResponseEntity.ok(paymentService.createIntent(request));
     }
 
@@ -28,7 +29,7 @@ public class PaymentController {
     @PostMapping("/api/payments/cart-intent")
     public ResponseEntity<PaymentIntentResponse> createCartIntent(
             @AuthenticationPrincipal String buyerId,
-            @RequestBody CartPaymentIntentRequest request) throws StripeException {
+            @Valid @RequestBody CartPaymentIntentRequest request) throws StripeException {
         return ResponseEntity.ok(paymentService.createCartIntent(buyerId, request.getCutIds()));
     }
 

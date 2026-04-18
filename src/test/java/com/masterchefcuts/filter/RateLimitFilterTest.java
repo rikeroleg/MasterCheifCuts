@@ -143,4 +143,27 @@ class RateLimitFilterTest {
 
         assertThat(res.getStatus()).isEqualTo(429);
     }
+
+    @Test
+    void xForwardedFor_spoofProtection_rightmostIpUsed() throws Exception {
+        // A client exhausts quota using "real-proxy" as the rightmost (trusted) IP.
+        // Even if they rotate the spoofed left-hand IP, the rightmost is the same
+        // so the quota is still shared and the 11th request is blocked.
+        for (int i = 0; i < 10; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/login");
+            req.setServletPath("/api/auth/login");
+            req.addHeader("X-Forwarded-For", "spoofed-" + i + ", real-proxy");
+            filter.doFilterInternal(req, new MockHttpServletResponse(), mock(FilterChain.class));
+        }
+
+        // 11th request: different spoofed prefix, but same rightmost — should be blocked
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/login");
+        req.setServletPath("/api/auth/login");
+        req.addHeader("X-Forwarded-For", "another-spoofed-ip, real-proxy");
+        MockHttpServletResponse res = new MockHttpServletResponse();
+
+        filter.doFilterInternal(req, res, mock(FilterChain.class));
+
+        assertThat(res.getStatus()).isEqualTo(429);
+    }
 }
