@@ -77,7 +77,7 @@ public class ListingController {
     public ResponseEntity<ListingResponse> updateListing(
             @AuthenticationPrincipal String farmerId,
             @PathVariable Long id,
-            @RequestBody ListingUpdateRequest req) {
+            @Valid @RequestBody ListingUpdateRequest req) {
         return ResponseEntity.ok(listingService.updateListing(id, farmerId, req));
     }
 

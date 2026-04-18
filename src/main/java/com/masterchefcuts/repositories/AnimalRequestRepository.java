@@ -12,5 +12,7 @@ public interface AnimalRequestRepository extends JpaRepository<AnimalRequest, Lo
 
     List<AnimalRequest> findByStatusOrderByCreatedAtDesc(AnimalRequestStatus status);
 
+    List<AnimalRequest> findByStatusInOrderByCreatedAtDesc(List<AnimalRequestStatus> statuses);
+
     List<AnimalRequest> findByBuyerIdOrderByCreatedAtDesc(String buyerId);
 }

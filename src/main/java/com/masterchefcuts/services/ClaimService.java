@@ -12,6 +12,7 @@ import com.masterchefcuts.repositories.CutRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -129,6 +130,34 @@ public class ClaimService {
         }
 
         return listingService.toDto(listingRepository.findById(listingId).get());
+    }
+
+    @Transactional
+    public void unclaimCut(Long claimId, String buyerId) {
+        Claim claim = claimRepository.findById(claimId)
+                .orElseThrow(() -> new RuntimeException("Claim not found"));
+
+        if (!claim.getBuyer().getId().equals(buyerId))
+            throw new AccessDeniedException("Not authorized to unclaim this cut");
+
+        if (claim.isPaid())
+            throw new RuntimeException("Cannot unclaim a cut that has already been paid for");
+
+        Cut cut = claim.getCut();
+        cut.setClaimed(false);
+        cut.setClaimedBy(null);
+        cut.setClaimedAt(null);
+        cutRepository.save(cut);
+
+        Listing listing = claim.getListing();
+        claimRepository.delete(claim);
+
+        // Reactivate listing if it was fully claimed
+        if (listing.getStatus() == ListingStatus.FULLY_CLAIMED) {
+            listing.setStatus(ListingStatus.ACTIVE);
+            listing.setFullyClaimedAt(null);
+            listingRepository.save(listing);
+        }
     }
 
     public List<com.masterchefcuts.model.Claim> getClaimsForBuyer(String buyerId) {

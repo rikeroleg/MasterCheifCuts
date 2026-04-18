@@ -4,6 +4,7 @@ import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.dto.AuthResponse;
 import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
+import com.masterchefcuts.dto.UpdateProfileRequest;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
@@ -191,7 +192,7 @@ class AuthServiceTest {
 
     @Test
     void updateProfile_updatesAllNonNullFields() {
-        RegisterRequest req = new RegisterRequest();
+        UpdateProfileRequest req = new UpdateProfileRequest();
         req.setFirstName("Jane");
         req.setLastName("Updated");
         req.setShopName("New Shop");
@@ -221,7 +222,7 @@ class AuthServiceTest {
 
     @Test
     void updateProfile_updatesNonNullFields() {
-        RegisterRequest req = new RegisterRequest();
+        UpdateProfileRequest req = new UpdateProfileRequest();
         req.setFirstName("Jane");
         req.setCity("Chicago");
 
@@ -239,7 +240,7 @@ class AuthServiceTest {
     void updateProfile_throwsWhenParticipantNotFound() {
         when(participantRepo.findById("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.updateProfile("missing", new RegisterRequest()))
+        assertThatThrownBy(() -> authService.updateProfile("missing", new UpdateProfileRequest()))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("not found");
     }

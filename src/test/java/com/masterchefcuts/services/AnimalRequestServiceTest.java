@@ -99,7 +99,8 @@ class AnimalRequestServiceTest {
 
     @Test
     void getOpen_returnsOpenRequestsAsDtos() {
-        when(animalRequestRepository.findByStatusOrderByCreatedAtDesc(AnimalRequestStatus.OPEN))
+        when(animalRequestRepository.findByStatusInOrderByCreatedAtDesc(
+                List.of(AnimalRequestStatus.OPEN, AnimalRequestStatus.FULFILLED)))
                 .thenReturn(List.of(openRequest));
 
         List<AnimalRequestResponse> result = animalRequestService.getOpen();
@@ -213,7 +214,7 @@ class AnimalRequestServiceTest {
         when(animalRequestRepository.findById(1L)).thenReturn(Optional.of(openRequest));
 
         assertThatThrownBy(() -> animalRequestService.cancel(1L, "other-buyer"))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
                 .hasMessageContaining("Not authorized");
     }
 

@@ -61,8 +61,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     return;
                 }
                 times.addLast(now);
-            }
-        }
+            }            // Best-effort eviction of stale entries from the map
+            requestTimes.entrySet().removeIf(e -> {
+                synchronized (e.getValue()) {
+                    return e.getValue().isEmpty();
+                }
+            });        }
 
         chain.doFilter(request, response);
     }
@@ -70,7 +74,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private String getClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+            // Take the rightmost entry — added by the trusted upstream proxy (Cloud Run LB).
+            // The leftmost entries can be spoofed by a malicious client.
+            String[] parts = forwarded.split(",");
+            return parts[parts.length - 1].trim();
         }
         return request.getRemoteAddr();
     }

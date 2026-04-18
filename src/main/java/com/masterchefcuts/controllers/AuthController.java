@@ -5,6 +5,7 @@ import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
 import com.masterchefcuts.dto.RefreshRequest;
 import com.masterchefcuts.dto.ResetPasswordRequest;
+import com.masterchefcuts.dto.UpdateProfileRequest;
 import com.masterchefcuts.services.AuthService;
 import com.masterchefcuts.services.EmailService;
 import jakarta.validation.Valid;
@@ -53,7 +54,7 @@ public class AuthController {
 
     @PatchMapping("/me")
     public ResponseEntity<AuthResponse> updateMe(@AuthenticationPrincipal String participantId,
-                                                  @RequestBody RegisterRequest req) {
+                                                  @Valid @RequestBody UpdateProfileRequest req) {
         if (participantId == null) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
         }

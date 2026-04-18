@@ -68,6 +68,17 @@ public class AnimalRequestController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Buyer edits their own open request */
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('BUYER')")
+    public ResponseEntity<AnimalRequestResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody AnimalRequestRequest req,
+            @RequestHeader("Authorization") String authHeader) {
+        String buyerId = extractId(authHeader);
+        return ResponseEntity.ok(animalRequestService.updateRequest(id, buyerId, req));
+    }
+
     private String extractId(String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         return jwtUtil.extractId(token);
