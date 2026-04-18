@@ -10,6 +10,7 @@ import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import com.masterchefcuts.repositories.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -63,19 +64,38 @@ public class ReviewService {
         return reviewRepository.existsByBuyerIdAndListingId(buyerId, listingId);
     }
 
+    /** Returns up to 6 high-quality reviews for the homepage testimonials section. */
+    public List<ReviewResponse> getFeaturedReviews() {
+        return reviewRepository.findFeatured(PageRequest.of(0, 6))
+                .stream()
+                .map(r -> toDto(r, true))
+                .collect(Collectors.toList());
+    }
+
     private String stripHtml(String input) {
         if (input == null) return "";
         return input.replaceAll("<[^>]*>", "").trim();
     }
 
     private ReviewResponse toDto(Review r) {
-        return ReviewResponse.builder()
+        return toDto(r, false);
+    }
+
+    private ReviewResponse toDto(Review r, boolean includeListing) {
+        ReviewResponse.ReviewResponseBuilder builder = ReviewResponse.builder()
                 .id(r.getId())
                 .listingId(r.getListing().getId())
                 .buyerName(r.getBuyer().getFirstName() + " " + r.getBuyer().getLastName().charAt(0) + ".")
                 .rating(r.getRating())
                 .comment(r.getComment())
-                .createdAt(r.getCreatedAt())
-                .build();
+                .createdAt(r.getCreatedAt());
+        if (includeListing) {
+            Listing l = r.getListing();
+            builder.animalType(l.getAnimalType() != null ? l.getAnimalType().toString() : null)
+                   .farmerShopName(l.getFarmer() != null
+                           ? (l.getFarmer().getShopName() != null ? l.getFarmer().getShopName() : l.getFarmer().getFirstName())
+                           : null);
+        }
+        return builder.build();
     }
 }

@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -263,5 +264,30 @@ class ReviewServiceTest {
 
         assertThat(reviewService.hasReviewed("buyer-1", 1L)).isFalse();
     }
-}
 
+    // ── getFeaturedReviews ────────────────────────────────────────────────────
+
+    @Test
+    void getFeaturedReviews_returnsEnrichedResponses() {
+        Review r = Review.builder()
+                .id(10L).buyer(buyer).listing(listing)
+                .rating(5).comment("Incredibly fresh and flavorful!")
+                .createdAt(LocalDateTime.now()).build();
+        when(reviewRepository.findFeatured(any())).thenReturn(List.of(r));
+
+        List<ReviewResponse> result = reviewService.getFeaturedReviews();
+
+        assertThat(result).hasSize(1);
+        ReviewResponse resp = result.get(0);
+        assertThat(resp.getRating()).isEqualTo(5);
+        assertThat(resp.getAnimalType()).isNotNull();
+        assertThat(resp.getFarmerShopName()).isNotNull();
+    }
+
+    @Test
+    void getFeaturedReviews_emptyList_returnsEmpty() {
+        when(reviewRepository.findFeatured(any())).thenReturn(List.of());
+
+        assertThat(reviewService.getFeaturedReviews()).isEmpty();
+    }
+}

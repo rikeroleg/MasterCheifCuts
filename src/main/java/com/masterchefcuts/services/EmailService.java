@@ -32,6 +32,9 @@ public class EmailService {
     @Value("${app.base-url}")
     private String appBaseUrl;
 
+    @Value("${resend.support-email}")
+    private String supportEmail;
+
     @Async
     public void sendClaimConfirmation(Participant buyer, Listing listing, String cutLabel) {
         String subject = "✅ You claimed the " + cutLabel + " cut!";
@@ -286,6 +289,28 @@ public class EmailService {
                 + "Log in at: http://localhost:5173/login\n\n"
                 + "— MasterChef Cuts";
         send(farmer.getEmail(), subject, body);
+    }
+
+    @Async
+    public void sendContactFormEmail(String name, String senderEmail, String subject, String message) {
+        String emailSubject = "[Contact Form] " + subject;
+        String body = "Name: " + name + "\n"
+                + "Email: " + senderEmail + "\n"
+                + "Subject: " + subject + "\n\n"
+                + "Message:\n" + message + "\n\n"
+                + "---\nReply directly to this email to respond to the sender.";
+        // Forward to support inbox; use a plain send (not the verified sender address for reply-to)
+        try {
+            resend.emails().send(CreateEmailOptions.builder()
+                    .from(from)
+                    .to(supportEmail)
+                    .replyTo(senderEmail)
+                    .subject(emailSubject)
+                    .text(body)
+                    .build());
+        } catch (Exception e) {
+            log.error("Failed to forward contact form from {}: {}", senderEmail, e.getMessage());
+        }
     }
 
     private void sendHtml(String to, String subject, String html) {

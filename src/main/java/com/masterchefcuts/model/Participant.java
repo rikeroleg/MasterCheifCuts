@@ -1,5 +1,6 @@
 package com.masterchefcuts.model;
 
+import com.masterchefcuts.enums.EmailPreference;
 import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.Role;
 import jakarta.persistence.*;
@@ -58,6 +59,10 @@ public class Participant {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private NotificationPreference notificationPreference = NotificationPreference.ALL;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private EmailPreference emailPreference = EmailPreference.ALL;
 
     // Farmer profile enrichment
     @Column(length = 500)
