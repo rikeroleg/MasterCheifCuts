@@ -83,5 +83,5 @@ jobs:
             --cpu 1 \
             --memory 1Gi \
             --cpu-boost \
-            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,RESEND_FROM=${{ secrets.RESEND_FROM }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},JWT_SECRET=${{ secrets.JWT_SECRET }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }},STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }},DB_HOST=${{ secrets.DB_HOST }},DB_PORT=1433,DB_NAME=${{ secrets.DB_NAME }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }}" \
+            --update-env-vars "SPRING_PROFILES_ACTIVE=prod,RESEND_FROM=${{ secrets.RESEND_FROM }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},RESEND_SUPPORT_EMAIL=${{ secrets.RESEND_SUPPORT_EMAIL }},JWT_SECRET=${{ secrets.JWT_SECRET }},STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }},STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }},DB_HOST=${{ secrets.DB_HOST }},DB_PORT=1433,DB_NAME=${{ secrets.DB_NAME }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }}" \
             --quiet
