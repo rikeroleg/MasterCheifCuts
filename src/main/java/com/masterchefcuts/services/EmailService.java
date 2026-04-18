@@ -29,6 +29,9 @@ public class EmailService {
     @Value("${resend.from}")
     private String from;
 
+    @Value("${app.base-url}")
+    private String appBaseUrl;
+
     @Async
     public void sendClaimConfirmation(Participant buyer, Listing listing, String cutLabel) {
         String subject = "✅ You claimed the " + cutLabel + " cut!";
@@ -88,7 +91,7 @@ public class EmailService {
         String subject = "🔑 Reset your MasterChef Cuts password";
         String body = "Hi " + firstName + ",\n\n"
                 + "We received a request to reset your password. Click the link below (valid for 1 hour):\n\n"
-                + "http://localhost:5173/reset-password?token=" + token + "\n\n"
+                + appBaseUrl + "/reset-password?token=" + token + "\n\n"
                 + "If you didn't request this, ignore this email — your password won't change.\n\n"
                 + "— MasterChef Cuts";
         send(to, subject, body);
@@ -99,7 +102,7 @@ public class EmailService {
         String subject = "[MasterChef Cuts] Verify your email address";
         String body = "Hi " + firstName + ",\n\n"
                 + "Please verify your email address by clicking the link below:\n\n"
-                + "http://localhost:5173/verify-email?token=" + token + "\n\n"
+                + appBaseUrl + "/verify-email?token=" + token + "\n\n"
                 + "This link is valid for 24 hours. If you did not create an account, ignore this email.\n\n"
                 + "-- MasterChef Cuts";
         send(to, subject, body);
