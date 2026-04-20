@@ -13,7 +13,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     boolean existsByBuyerIdAndListingId(String buyerId, Long listingId);
     Optional<Review> findByBuyerIdAndListingId(String buyerId, Long listingId);
 
-    /** Top reviews with a comment, rating ≥ 4, ordered by rating desc then newest. */
-    @Query("SELECT r FROM Review r WHERE r.rating >= 4 AND r.comment IS NOT NULL AND LENGTH(r.comment) > 10 ORDER BY r.rating DESC, r.createdAt DESC")
+    /** Top reviews: admin-featured ones first, then high-quality auto-selected, up to 6. */
+    @Query("SELECT r FROM Review r WHERE r.featured = true OR (r.rating >= 4 AND r.comment IS NOT NULL AND LENGTH(r.comment) > 10) ORDER BY r.featured DESC, r.rating DESC, r.createdAt DESC")
     List<Review> findFeatured(org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<Review> findAllByOrderByCreatedAtDesc(org.springframework.data.domain.Pageable pageable);
 }
