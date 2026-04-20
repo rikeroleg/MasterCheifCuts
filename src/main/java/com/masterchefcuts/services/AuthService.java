@@ -9,9 +9,7 @@ import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
-import com.masterchefcuts.exception.AppException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +41,7 @@ public class AuthService {
                 emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
                 return buildResponse(ex, null);
             }
-            throw new AppException(HttpStatus.CONFLICT, "An account with that email already exists.");
+            throw new RuntimeException("An account with that email already exists.");
         }
 
         boolean isFarmer = req.getRole() == Role.FARMER;
@@ -87,13 +85,13 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest req) {
         Participant participant = participantRepo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password."));
+                .orElseThrow(() -> new RuntimeException("Incorrect email or password."));
 
         if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
-            throw new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password.");
+            throw new RuntimeException("Incorrect email or password.");
 
         if (emailVerificationEnabled && !participant.isEmailVerified())
-            throw new AppException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED");
+            throw new RuntimeException("EMAIL_NOT_VERIFIED");
 
         String token   = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
         String refresh = java.util.UUID.randomUUID().toString();
@@ -114,14 +112,14 @@ public class AuthService {
 
     public AuthResponse getMe(String participantId) {
         Participant participant = participantRepo.findById(participantId)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Participant not found"));
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
         return buildResponse(participant, null);
     }
 
     @Transactional
     public AuthResponse updateProfile(String participantId, UpdateProfileRequest req) {
         Participant participant = participantRepo.findById(participantId)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND, "Participant not found"));
+                .orElseThrow(() -> new RuntimeException("Participant not found"));
 
         if (req.getFirstName() != null) participant.setFirstName(req.getFirstName());
         if (req.getLastName()  != null) participant.setLastName(req.getLastName());
@@ -164,9 +162,9 @@ public class AuthService {
     @Transactional
     public AuthResponse refreshToken(String refreshToken) {
         Participant p = participantRepo.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token."));
+                .orElseThrow(() -> new RuntimeException("Invalid or expired refresh token."));
         if (p.getRefreshTokenExpiry() == null || p.getRefreshTokenExpiry().isBefore(LocalDateTime.now()))
-            throw new AppException(HttpStatus.UNAUTHORIZED, "Refresh token has expired.");
+            throw new RuntimeException("Refresh token has expired.");
         // Rotate: invalidate the old token immediately
         String newAccess   = jwtUtil.generateToken(p.getId(), p.getRole().name());
         String newRefresh  = java.util.UUID.randomUUID().toString();
@@ -209,7 +207,6 @@ public class AuthService {
                 .zipCode(p.getZipCode())
                 .approved(p.isApproved())
                 .notificationPreference(p.getNotificationPreference())
-                .emailPreference(p.getEmailPreference())
                 .bio(p.getBio())
                 .certifications(p.getCertifications())
                 .build();

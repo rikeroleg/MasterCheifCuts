@@ -4,7 +4,6 @@ import com.masterchefcuts.dto.ReviewRequest;
 import com.masterchefcuts.dto.ReviewResponse;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
-import com.masterchefcuts.enums.NotificationType;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Claim;
 import com.masterchefcuts.model.Cut;
@@ -23,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,8 +37,6 @@ class ReviewServiceTest {
     @Mock private ListingRepository listingRepository;
     @Mock private ParticipantRepo participantRepo;
     @Mock private ClaimRepository claimRepository;
-    @Mock private NotificationService notificationService;
-    @Mock private EmailService emailService;
 
     @InjectMocks private ReviewService reviewService;
 
@@ -99,29 +97,6 @@ class ReviewServiceTest {
         assertThat(response.getRating()).isEqualTo(5);
         assertThat(response.getComment()).isEqualTo("Amazing beef!");
         assertThat(response.getBuyerName()).isEqualTo("Bob B.");
-    }
-
-    @Test
-    void createReview_notifiesAndEmailsFarmer() {
-        ReviewRequest req = new ReviewRequest();
-        req.setListingId(1L);
-        req.setRating(4);
-        req.setComment("Great quality!");
-
-        Review savedReview = Review.builder()
-                .id(2L).buyer(buyer).listing(listing)
-                .rating(4).comment("Great quality!").createdAt(LocalDateTime.now()).build();
-
-        when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
-        when(claimRepository.findByBuyerIdOrderByClaimedAtDesc("buyer-1")).thenReturn(List.of(claim));
-        when(reviewRepository.existsByBuyerIdAndListingId("buyer-1", 1L)).thenReturn(false);
-        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
-        when(reviewRepository.save(any(Review.class))).thenReturn(savedReview);
-
-        reviewService.createReview("buyer-1", req);
-
-        verify(notificationService).send(eq(farmer), eq(NotificationType.REVIEW_RECEIVED), any(), any(), any(), eq(1L));
-        verify(emailService).sendReviewReceived(eq(farmer), eq(4), eq("Bob B."), contains("Angus"));
     }
 
     @Test

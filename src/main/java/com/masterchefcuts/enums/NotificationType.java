@@ -13,8 +13,5 @@ public enum NotificationType {
     ORDER_READY,          // Notify buyer when order is ready
     ORDER_COMPLETED,      // Notify farmer when buyer confirms receipt
     ORDER_REFUNDED,        // Notify buyer when a refund is issued
-    LISTING_CLOSED,        // Notify buyer/waitlist when farmer closes a listing early
-    DISPUTE_OPENED,        // Notify both buyer and farmer when a dispute is filed
-    REVIEW_RECEIVED,       // Notify farmer when a buyer leaves a review
-    NEW_LISTING_NEARBY     // Notify participants when a new listing is posted in their ZIP
+    LISTING_CLOSED         // Notify buyer/waitlist when farmer closes a listing early
 }

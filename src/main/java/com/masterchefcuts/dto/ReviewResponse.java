@@ -18,5 +18,4 @@ public class ReviewResponse {
     // Populated for /api/reviews/featured — used by homepage testimonials
     private String animalType;
     private String farmerShopName;
-    private boolean featured;
 }

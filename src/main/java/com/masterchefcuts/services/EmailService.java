@@ -2,7 +2,6 @@ package com.masterchefcuts.services;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.masterchefcuts.enums.EmailPreference;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
@@ -36,23 +35,8 @@ public class EmailService {
     @Value("${resend.support-email}")
     private String supportEmail;
 
-    /**
-     * Returns true if the participant should receive an email at the given importance level.
-     * isImportant=true  → sends for ALL and IMPORTANT (not NONE)
-     * isImportant=false → sends only for ALL
-     */
-    private boolean canSendEmail(Participant p, boolean isImportant) {
-        if (p == null || p.getEmailPreference() == null) return true;
-        return switch (p.getEmailPreference()) {
-            case NONE -> false;
-            case IMPORTANT -> isImportant;
-            case ALL -> true;
-        };
-    }
-
     @Async
     public void sendClaimConfirmation(Participant buyer, Listing listing, String cutLabel) {
-        if (!canSendEmail(buyer, false)) return;
         String subject = "✅ You claimed the " + cutLabel + " cut!";
         String body = "Hi " + buyer.getFirstName() + ",\n\n"
                 + "You've successfully claimed the " + cutLabel + " cut from:\n"
@@ -67,14 +51,10 @@ public class EmailService {
     @Async
     public void sendPoolFullToBuyers(List<Participant> buyers, Listing listing) {
         String subject = "🎉 The " + listing.getBreed() + " pool is full!";
-        String farmerName = listing.getFarmer().getShopName() != null
-                ? listing.getFarmer().getShopName()
-                : listing.getFarmer().getFirstName();
         for (Participant buyer : buyers) {
-            if (!canSendEmail(buyer, true)) continue;
             String body = "Hi " + buyer.getFirstName() + ",\n\n"
                     + "Great news — the " + listing.getBreed() + " " + listing.getAnimalType()
-                    + " listing from " + farmerName + " is fully claimed!\n\n"
+                    + " listing from " + listing.getFarmer().getShopName() + " is fully claimed!\n\n"
                     + "The farmer will set a processing date soon. We'll email you when that happens.\n\n"
                     + "— MasterChef Cuts";
             send(buyer.getEmail(), subject, body);
@@ -83,7 +63,6 @@ public class EmailService {
 
     @Async
     public void sendPoolFullToFarmer(Participant farmer, Listing listing) {
-        if (!canSendEmail(farmer, true)) return;
         String subject = "🎉 Your " + listing.getBreed() + " listing is fully claimed!";
         String body = "Hi " + farmer.getFirstName() + ",\n\n"
                 + "All cuts on your " + listing.getBreed() + " " + listing.getAnimalType()
@@ -97,17 +76,13 @@ public class EmailService {
     public void sendProcessingDateSet(List<Participant> buyers, Listing listing, LocalDate date) {
         String formattedDate = date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
         String subject = "🗓 Processing date set — " + listing.getBreed() + " " + listing.getAnimalType();
-        String farmerName = listing.getFarmer().getShopName() != null
-                ? listing.getFarmer().getShopName()
-                : listing.getFarmer().getFirstName();
         for (Participant buyer : buyers) {
-            if (!canSendEmail(buyer, true)) continue;
             String body = "Hi " + buyer.getFirstName() + ",\n\n"
                     + "The processing date for your " + listing.getBreed() + " "
                     + listing.getAnimalType() + " cut has been set:\n\n"
                     + "  Processing date: " + formattedDate + "\n"
-                    + "  Farm: " + (listing.getSourceFarm() != null ? listing.getSourceFarm() : farmerName) + "\n"
-                    + "  Farmer: " + farmerName + "\n\n"
+                    + "  Farm: " + listing.getSourceFarm() + "\n"
+                    + "  Farmer: " + listing.getFarmer().getShopName() + "\n\n"
                     + "Please coordinate pickup details directly with the farmer.\n\n"
                     + "— MasterChef Cuts";
             send(buyer.getEmail(), subject, body);
@@ -274,7 +249,6 @@ public class EmailService {
 
     @Async
     public void sendOrderAccepted(Order order, Participant buyer) {
-        if (!canSendEmail(buyer, true)) return;
         String subject = "✅ Your order has been accepted — MasterChef Cuts";
         String body = "Hi " + buyer.getFirstName() + ",\n\n"
                 + "Great news! The farmer has accepted your order #"
@@ -286,7 +260,6 @@ public class EmailService {
 
     @Async
     public void sendOrderReady(Order order, Participant buyer) {
-        if (!canSendEmail(buyer, true)) return;
         String subject = "📦 Your order is ready for pickup — MasterChef Cuts";
         String body = "Hi " + buyer.getFirstName() + ",\n\n"
                 + "Your order #" + order.getId().substring(0, 8).toUpperCase() + " is ready for pickup!\n\n"
@@ -298,7 +271,6 @@ public class EmailService {
 
     @Async
     public void sendOrderCompleted(Order order, Participant buyer) {
-        if (!canSendEmail(buyer, true)) return;
         String subject = "🎉 Order complete — thank you! — MasterChef Cuts";
         String body = "Hi " + buyer.getFirstName() + ",\n\n"
                 + "Your order #" + order.getId().substring(0, 8).toUpperCase()
@@ -306,83 +278,6 @@ public class EmailService {
                 + "Enjoyed your purchase? Consider leaving a review for the farmer on your listing page.\n\n"
                 + "— MasterChef Cuts";
         send(buyer.getEmail(), subject, body);
-    }
-
-    // ════════════════════════════════════════════════════════════════
-    // New trigger emails
-    // ════════════════════════════════════════════════════════════════
-
-    /** Farmer: "[name] claimed [cut] from your [animal]" */
-    @Async
-    public void sendNewClaimToFarmer(Participant farmer, Participant buyer, Listing listing, String cutLabel) {
-        if (!canSendEmail(farmer, false)) return;
-        String subject = "🛒 New cut claimed — " + listing.getBreed() + " " + listing.getAnimalType();
-        String body = "Hi " + farmer.getFirstName() + ",\n\n"
-                + buyer.getFirstName() + " " + buyer.getLastName()
-                + " has claimed the " + cutLabel + " cut on your "
-                + listing.getBreed() + " " + listing.getAnimalType() + " listing.\n\n"
-                + "Log in to see the full listing status: " + appBaseUrl + "/listings/" + listing.getId() + "\n\n"
-                + "— MasterChef Cuts";
-        send(farmer.getEmail(), subject, body);
-    }
-
-    /** Participant: "A farmer fulfilled your request for [animal]!" */
-    @Async
-    public void sendRequestFulfilled(Participant buyer, String farmerName, String breed, String animalType, Long listingId) {
-        if (!canSendEmail(buyer, true)) return;
-        String subject = "🎉 Your animal request has been fulfilled!";
-        String body = "Hi " + buyer.getFirstName() + ",\n\n"
-                + farmerName + " has fulfilled your request for a " + breed + " " + animalType + "!\n\n"
-                + "Your requested cuts have been auto-claimed on the new listing. Log in to view it:\n"
-                + appBaseUrl + "/listings/" + listingId + "\n\n"
-                + "— MasterChef Cuts";
-        send(buyer.getEmail(), subject, body);
-    }
-
-    /** Both buyer and farmer: "A dispute has been filed on order #[id]" */
-    @Async
-    public void sendDisputeOpened(Participant recipient, Long disputeId, Long listingId, boolean isBuyer) {
-        if (!canSendEmail(recipient, true)) return;
-        String subject = "⚠️ Dispute filed — MasterChef Cuts";
-        String role = isBuyer ? "you opened" : "a buyer opened";
-        String body = "Hi " + recipient.getFirstName() + ",\n\n"
-                + "A dispute has been filed on a listing you are involved with (" + role + ").\n\n"
-                + "  Dispute ID: #" + disputeId + "\n"
-                + (listingId != null ? "  Listing: " + appBaseUrl + "/listings/" + listingId + "\n" : "")
-                + "\nOur team will review the dispute and reach out within 2 business days.\n\n"
-                + "— MasterChef Cuts";
-        send(recipient.getEmail(), subject, body);
-    }
-
-    /** Farmer: "You received a [X]-star review!" */
-    @Async
-    public void sendReviewReceived(Participant farmer, int rating, String buyerDisplayName, String animalDesc) {
-        if (!canSendEmail(farmer, false)) return;
-        String stars = "★".repeat(rating) + "☆".repeat(5 - rating);
-        String subject = "⭐ You received a " + rating + "-star review — MasterChef Cuts";
-        String body = "Hi " + farmer.getFirstName() + ",\n\n"
-                + buyerDisplayName + " left you a " + rating + "-star review " + stars + " for your "
-                + animalDesc + " listing.\n\n"
-                + "Log in to see the full review and manage your featured testimonials.\n\n"
-                + "— MasterChef Cuts";
-        send(farmer.getEmail(), subject, body);
-    }
-
-    /** Participants in same ZIP: "New [animal] listed near you" */
-    @Async
-    public void sendNewListingNearby(Participant participant, Listing listing) {
-        if (!canSendEmail(participant, false)) return;
-        String animalDesc = listing.getBreed() + " " + listing.getAnimalType();
-        String farmerName = listing.getFarmer().getShopName() != null
-                ? listing.getFarmer().getShopName()
-                : listing.getFarmer().getFirstName() + " " + listing.getFarmer().getLastName();
-        String subject = "🐄 New " + animalDesc + " listing near you — MasterChef Cuts";
-        String body = "Hi " + participant.getFirstName() + ",\n\n"
-                + farmerName + " just posted a new " + animalDesc + " listing in your area (" + listing.getZipCode() + ").\n\n"
-                + "View the listing and claim a cut before it fills up:\n"
-                + appBaseUrl + "/listings/" + listing.getId() + "\n\n"
-                + "— MasterChef Cuts";
-        send(participant.getEmail(), subject, body);
     }
 
     @Async

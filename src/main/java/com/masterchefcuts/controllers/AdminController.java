@@ -1,10 +1,8 @@
 package com.masterchefcuts.controllers;
 
-import com.masterchefcuts.dto.ReviewResponse;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.services.AdminService;
-import com.masterchefcuts.services.ReviewService;
 import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +17,6 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminService adminService;
-    private final ReviewService reviewService;
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/admin/users")
@@ -102,27 +99,6 @@ public class AdminController {
     @DeleteMapping("/api/admin/comments/{id}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long id) {
         adminService.adminDeleteComment(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/api/admin/reviews")
-    public ResponseEntity<Map<String, Object>> getReviews(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size) {
-        return ResponseEntity.ok(reviewService.getAllForAdmin(page, size));
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/api/admin/reviews/{id}/featured")
-    public ResponseEntity<ReviewResponse> toggleFeatured(@PathVariable Long id) {
-        return ResponseEntity.ok(reviewService.toggleFeatured(id));
-    }
-
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/api/admin/reviews/{id}")
-    public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
-        reviewService.adminDeleteReview(id);
         return ResponseEntity.noContent().build();
     }
 }

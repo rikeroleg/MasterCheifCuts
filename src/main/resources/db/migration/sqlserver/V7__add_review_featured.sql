@@ -1,1 +1,0 @@
-ALTER TABLE reviews ADD featured BIT NOT NULL DEFAULT 0;

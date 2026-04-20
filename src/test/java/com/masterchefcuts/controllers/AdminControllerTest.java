@@ -5,7 +5,6 @@ import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.services.AdminService;
-import com.masterchefcuts.services.ReviewService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,7 +32,6 @@ class AdminControllerTest {
     @Autowired ObjectMapper objectMapper;
 
     @MockBean AdminService adminService;
-    @MockBean ReviewService reviewService;
     @MockBean JwtUtil jwtUtil;
 
     private static final Participant FARMER = Participant.builder()

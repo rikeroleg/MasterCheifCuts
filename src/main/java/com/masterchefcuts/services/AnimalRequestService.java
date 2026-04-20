@@ -17,7 +17,6 @@ import org.springframework.security.access.AccessDeniedException;
 import com.masterchefcuts.repositories.CutRepository;
 import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
-import com.masterchefcuts.services.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +37,6 @@ public class AnimalRequestService {
     private final ClaimRepository claimRepository;
     private final NotificationService notificationService;
     private final ListingService listingService;
-    private final EmailService emailService;
 
     @Transactional
     public AnimalRequestResponse create(String buyerId, AnimalRequestRequest req) {
@@ -154,11 +152,6 @@ public class AnimalRequestService {
                         + " has taken on your " + request.getBreed() + " request. Your cuts are reserved!",
                 savedListing.getId()
         );
-
-        String farmerDisplay = farmer.getShopName() != null ? farmer.getShopName()
-                : farmer.getFirstName() + " " + farmer.getLastName();
-        emailService.sendRequestFulfilled(buyer, farmerDisplay, request.getBreed(),
-                request.getAnimalType().toString(), savedListing.getId());
 
         return toDto(request);
     }

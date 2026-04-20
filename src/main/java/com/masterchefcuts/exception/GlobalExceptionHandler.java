@@ -15,11 +15,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(AppException.class)
-    public ResponseEntity<Map<String, Object>> handleApp(AppException ex) {
-        return error(ex.getStatus(), ex.getMessage());
-    }
-
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());

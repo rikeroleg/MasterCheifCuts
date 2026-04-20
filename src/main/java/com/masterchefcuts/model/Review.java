@@ -29,8 +29,5 @@ public class Review {
     private String comment;
 
     @Builder.Default
-    private boolean featured = false;
-
-    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

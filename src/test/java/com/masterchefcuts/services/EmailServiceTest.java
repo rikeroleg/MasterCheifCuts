@@ -1,7 +1,6 @@
 package com.masterchefcuts.services;
 
 import com.masterchefcuts.enums.AnimalType;
-import com.masterchefcuts.enums.EmailPreference;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
@@ -42,7 +41,7 @@ class EmailServiceTest {
     @BeforeEach
     void setUp() throws Exception {
         ReflectionTestUtils.setField(emailService, "from", "no-reply@test.com");
-        lenient().when(resend.emails()).thenReturn(emails);
+        when(resend.emails()).thenReturn(emails);
         lenient().when(emails.send(any(CreateEmailOptions.class))).thenReturn(new CreateEmailResponse());
 
         farmer = Participant.builder()
@@ -338,141 +337,6 @@ class EmailServiceTest {
         emailService.sendOrderConfirmationToBuyer(order, buyer);
 
         verify(emails).send(any(CreateEmailOptions.class));
-    }
-
-    // ── EmailPreference / canSendEmail guard tests ────────────────────────────
-
-    @Test
-    void sendClaimConfirmation_withEmailPrefNone_skipsEmail() throws Exception {
-        buyer.setEmailPreference(EmailPreference.NONE);
-        emailService.sendClaimConfirmation(buyer, listing, "Ribeye");
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendClaimConfirmation_withEmailPrefAll_sendsEmail() throws Exception {
-        buyer.setEmailPreference(EmailPreference.ALL);
-        emailService.sendClaimConfirmation(buyer, listing, "Ribeye");
-        verify(emails).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendClaimConfirmation_withEmailPrefImportant_skipsEmail() throws Exception {
-        // sendClaimConfirmation is an ALL-only email (isImportant=false)
-        buyer.setEmailPreference(EmailPreference.IMPORTANT);
-        emailService.sendClaimConfirmation(buyer, listing, "Ribeye");
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendOrderAccepted_withEmailPrefImportant_sendsEmail() throws Exception {
-        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
-        order.setId("aabbccdd-0000-0000-0000-000000000000");
-        buyer.setEmailPreference(EmailPreference.IMPORTANT);
-        emailService.sendOrderAccepted(order, buyer);
-        verify(emails).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendOrderAccepted_withEmailPrefNone_skipsEmail() throws Exception {
-        com.masterchefcuts.model.Order order = new com.masterchefcuts.model.Order();
-        order.setId("aabbccdd-0000-0000-0000-000000000000");
-        buyer.setEmailPreference(EmailPreference.NONE);
-        emailService.sendOrderAccepted(order, buyer);
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendClaimConfirmation_withNullEmailPref_defaultsToSend() throws Exception {
-        // null emailPreference defaults to sending (safe fallback)
-        buyer.setEmailPreference(null);
-        emailService.sendClaimConfirmation(buyer, listing, "Ribeye");
-        verify(emails).send(any(CreateEmailOptions.class));
-    }
-
-    // ── New trigger email methods ─────────────────────────────────────────────
-
-    @Test
-    void sendNewClaimToFarmer_sends1EmailToFarmer() throws Exception {
-        farmer.setEmailPreference(EmailPreference.ALL);
-        emailService.sendNewClaimToFarmer(farmer, buyer, listing, "Ribeye");
-        verify(emails).send(argThat((CreateEmailOptions opts) ->
-                opts.getTo() != null && opts.getTo().contains("jane@farm.com")));
-    }
-
-    @Test
-    void sendNewClaimToFarmer_withImportantPref_skipsEmail() throws Exception {
-        farmer.setEmailPreference(EmailPreference.IMPORTANT);
-        emailService.sendNewClaimToFarmer(farmer, buyer, listing, "Ribeye");
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendRequestFulfilled_sends1EmailToBuyer() throws Exception {
-        buyer.setEmailPreference(EmailPreference.ALL);
-        emailService.sendRequestFulfilled(buyer, "Jane's Farm", "Angus", "BEEF", 42L);
-        verify(emails).send(argThat((CreateEmailOptions opts) ->
-                opts.getTo() != null && opts.getTo().contains("bob@buyer.com")));
-    }
-
-    @Test
-    void sendRequestFulfilled_withNonePref_skipsEmail() throws Exception {
-        buyer.setEmailPreference(EmailPreference.NONE);
-        emailService.sendRequestFulfilled(buyer, "Jane's Farm", "Angus", "BEEF", 42L);
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendDisputeOpened_isBuyer_sends1Email() throws Exception {
-        buyer.setEmailPreference(EmailPreference.ALL);
-        emailService.sendDisputeOpened(buyer, 99L, 1L, true);
-        verify(emails).send(argThat((CreateEmailOptions opts) ->
-                opts.getTo() != null && opts.getTo().contains("bob@buyer.com")));
-    }
-
-    @Test
-    void sendDisputeOpened_isFarmer_sends1Email() throws Exception {
-        farmer.setEmailPreference(EmailPreference.IMPORTANT);
-        emailService.sendDisputeOpened(farmer, 99L, 1L, false);
-        verify(emails).send(argThat((CreateEmailOptions opts) ->
-                opts.getTo() != null && opts.getTo().contains("jane@farm.com")));
-    }
-
-    @Test
-    void sendDisputeOpened_withNonePref_skipsEmail() throws Exception {
-        buyer.setEmailPreference(EmailPreference.NONE);
-        emailService.sendDisputeOpened(buyer, 99L, 1L, true);
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendReviewReceived_withAllPref_sends1Email() throws Exception {
-        farmer.setEmailPreference(EmailPreference.ALL);
-        emailService.sendReviewReceived(farmer, 5, "Bob B.", "Angus BEEF");
-        verify(emails).send(argThat((CreateEmailOptions opts) ->
-                opts.getTo() != null && opts.getTo().contains("jane@farm.com")));
-    }
-
-    @Test
-    void sendReviewReceived_withImportantPref_skipsEmail() throws Exception {
-        farmer.setEmailPreference(EmailPreference.IMPORTANT);
-        emailService.sendReviewReceived(farmer, 5, "Bob B.", "Angus BEEF");
-        verify(emails, never()).send(any(CreateEmailOptions.class));
-    }
-
-    @Test
-    void sendNewListingNearby_withAllPref_sends1Email() throws Exception {
-        buyer.setEmailPreference(EmailPreference.ALL);
-        emailService.sendNewListingNearby(buyer, listing);
-        verify(emails).send(argThat((CreateEmailOptions opts) ->
-                opts.getTo() != null && opts.getTo().contains("bob@buyer.com")));
-    }
-
-    @Test
-    void sendNewListingNearby_withImportantPref_skipsEmail() throws Exception {
-        buyer.setEmailPreference(EmailPreference.IMPORTANT);
-        emailService.sendNewListingNearby(buyer, listing);
-        verify(emails, never()).send(any(CreateEmailOptions.class));
     }
 }
 
