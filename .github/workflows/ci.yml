@@ -25,3 +25,4 @@ jobs:
           STRIPE_WEBHOOK_SECRET: whsec_placeholder
           RESEND_API_KEY: ci-placeholder
           SPRING_PROFILES_ACTIVE: local
+          SENTRY_DSN: ""  # Disabled in CI; Sentry only activates in production
