@@ -42,6 +42,7 @@ class AnimalRequestServiceTest {
     @Mock private ClaimRepository claimRepository;
     @Mock private NotificationService notificationService;
     @Mock private ListingService listingService;
+    @Mock private EmailService emailService;
 
     @InjectMocks private AnimalRequestService animalRequestService;
 

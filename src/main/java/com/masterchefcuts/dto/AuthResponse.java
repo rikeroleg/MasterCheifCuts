@@ -1,5 +1,6 @@
 package com.masterchefcuts.dto;
 
+import com.masterchefcuts.enums.EmailPreference;
 import com.masterchefcuts.enums.NotificationPreference;
 import com.masterchefcuts.enums.Role;
 import lombok.AllArgsConstructor;
@@ -28,6 +29,7 @@ public class AuthResponse {
     private String zipCode;
     private boolean approved;
     private NotificationPreference notificationPreference;
+    private EmailPreference emailPreference;
     private String bio;
     private String certifications;
 }

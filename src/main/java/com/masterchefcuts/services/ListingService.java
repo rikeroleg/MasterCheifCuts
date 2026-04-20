@@ -16,6 +16,7 @@ import com.masterchefcuts.repositories.ListingRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import com.masterchefcuts.repositories.WaitlistRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ListingService {
@@ -86,7 +88,29 @@ public class ListingService {
                 .collect(Collectors.toList());
 
         listing.getCuts().addAll(cuts);
-        return toDto(listingRepository.save(listing));
+        Listing saved = listingRepository.save(listing);
+
+        // Notify participants in the same ZIP (excluding the farmer) — capped at 50 to prevent flooding
+        try {
+            List<Participant> nearby = participantRepo.findByZipCodeAndEmailVerifiedTrue(req.getZipCode())
+                    .stream()
+                    .filter(p -> !p.getId().equals(farmerId))
+                    .limit(50)
+                    .collect(Collectors.toList());
+            for (Participant p : nearby) {
+                notificationService.send(p, NotificationType.NEW_LISTING_NEARBY, "🐄",
+                        "New " + saved.getBreed() + " " + saved.getAnimalType() + " listing near you",
+                        (saved.getFarmer().getShopName() != null ? saved.getFarmer().getShopName() : farmer.getFirstName())
+                                + " just posted a new " + saved.getBreed() + " " + saved.getAnimalType()
+                                + " listing in " + saved.getZipCode() + ".",
+                        saved.getId());
+                emailService.sendNewListingNearby(p, saved);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send nearby listing notifications: {}", e.getMessage());
+        }
+
+        return toDto(saved);
     }
 
     @Transactional(readOnly = true)

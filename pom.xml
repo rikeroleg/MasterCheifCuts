@@ -121,6 +121,13 @@
 			<artifactId>flyway-sqlserver</artifactId>
 		</dependency>
 
+		<!-- Sentry — error monitoring and performance tracing. Activated only when SENTRY_DSN env var is set. -->
+		<dependency>
+			<groupId>io.sentry</groupId>
+			<artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+			<version>7.14.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
