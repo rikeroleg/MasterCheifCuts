@@ -2,6 +2,7 @@ package com.masterchefcuts.services;
 
 import com.masterchefcuts.dto.ReviewRequest;
 import com.masterchefcuts.dto.ReviewResponse;
+import com.masterchefcuts.enums.NotificationType;
 import com.masterchefcuts.exception.AppException;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Participant;
@@ -29,6 +30,8 @@ public class ReviewService {
     private final ListingRepository listingRepository;
     private final ParticipantRepo participantRepo;
     private final ClaimRepository claimRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public ReviewResponse createReview(String buyerId, ReviewRequest req) {
         Listing listing = listingRepository.findById(req.getListingId())
@@ -51,6 +54,18 @@ public class ReviewService {
                 .rating(req.getRating())
                 .comment(stripHtml(req.getComment()))
                 .build());
+
+        // Notify and email the farmer
+        Participant farmer = listing.getFarmer();
+        if (farmer != null) {
+            String buyerDisplay = buyer.getFirstName() + " " + buyer.getLastName().charAt(0) + ".";
+            String animalDesc = listing.getBreed() + " " + listing.getAnimalType();
+            notificationService.send(farmer, NotificationType.REVIEW_RECEIVED, "⭐",
+                    "New " + req.getRating() + "-star review!",
+                    buyerDisplay + " left you a " + req.getRating() + "-star review on your " + animalDesc + " listing.",
+                    listing.getId());
+            emailService.sendReviewReceived(farmer, req.getRating(), buyerDisplay, animalDesc);
+        }
 
         return toDto(review);
     }

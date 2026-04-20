@@ -89,6 +89,7 @@ public class ClaimService {
         );
 
         emailService.sendClaimConfirmation(buyer, listing, cut.getLabel());
+        emailService.sendNewClaimToFarmer(listing.getFarmer(), buyer, listing, cut.getLabel());
 
         long totalCuts   = cutRepository.countByListingId(listingId);
         long claimedCuts = cutRepository.countByListingIdAndClaimedTrue(listingId);

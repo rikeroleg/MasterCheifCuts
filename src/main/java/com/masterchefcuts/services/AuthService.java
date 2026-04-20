@@ -209,6 +209,7 @@ public class AuthService {
                 .zipCode(p.getZipCode())
                 .approved(p.isApproved())
                 .notificationPreference(p.getNotificationPreference())
+                .emailPreference(p.getEmailPreference())
                 .bio(p.getBio())
                 .certifications(p.getCertifications())
                 .build();

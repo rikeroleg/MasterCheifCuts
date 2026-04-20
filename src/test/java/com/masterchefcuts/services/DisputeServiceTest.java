@@ -1,5 +1,6 @@
 package com.masterchefcuts.services;
 
+import com.masterchefcuts.enums.NotificationType;
 import com.masterchefcuts.model.Claim;
 import com.masterchefcuts.model.Dispute;
 import com.masterchefcuts.model.Listing;
@@ -28,6 +29,8 @@ class DisputeServiceTest {
     @Mock private DisputeRepository disputeRepository;
     @Mock private ClaimRepository claimRepository;
     @Mock private ParticipantRepo participantRepo;
+    @Mock private NotificationService notificationService;
+    @Mock private EmailService emailService;
 
     @InjectMocks private DisputeService disputeService;
 
@@ -57,6 +60,7 @@ class DisputeServiceTest {
     void createDispute_success_savesAndReturns() {
         when(disputeRepository.existsByClaimIdAndStatus(5L, "OPEN")).thenReturn(false);
         when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+        when(participantRepo.findById("farmer-1")).thenReturn(Optional.of(farmer));
         when(claimRepository.findById(5L)).thenReturn(Optional.of(claim));
 
         Dispute saved = Dispute.builder()
@@ -74,6 +78,25 @@ class DisputeServiceTest {
         assertThat(result.getFarmerId()).isEqualTo("farmer-1");
         assertThat(result.getStatus()).isEqualTo("OPEN");
         verify(disputeRepository).save(any(Dispute.class));
+    }
+
+    @Test
+    void createDispute_notifiesBuyerAndFarmer() {
+        when(disputeRepository.existsByClaimIdAndStatus(5L, "OPEN")).thenReturn(false);
+        when(participantRepo.findById("buyer-1")).thenReturn(Optional.of(buyer));
+        when(participantRepo.findById("farmer-1")).thenReturn(Optional.of(farmer));
+        when(claimRepository.findById(5L)).thenReturn(Optional.of(claim));
+
+        Dispute saved = Dispute.builder().id(1L).buyerId("buyer-1").farmerId("farmer-1")
+                .claimId(5L).listingId(10L).status("OPEN").build();
+        when(disputeRepository.save(any(Dispute.class))).thenReturn(saved);
+
+        disputeService.createDispute("buyer-1", 5L, 10L, "QUALITY", "Bad cuts");
+
+        verify(notificationService, times(1)).send(eq(buyer), eq(NotificationType.DISPUTE_OPENED), any(), any(), any(), eq(10L));
+        verify(notificationService, times(1)).send(eq(farmer), eq(NotificationType.DISPUTE_OPENED), any(), any(), any(), eq(10L));
+        verify(emailService, times(1)).sendDisputeOpened(eq(buyer), eq(1L), eq(10L), eq(true));
+        verify(emailService, times(1)).sendDisputeOpened(eq(farmer), eq(1L), eq(10L), eq(false));
     }
 
     @Test
