@@ -1,6 +1,7 @@
 package com.masterchefcuts.controllers;
 
 import com.masterchefcuts.dto.AuthResponse;
+import com.masterchefcuts.dto.EmailRequest;
 import com.masterchefcuts.dto.LoginRequest;
 import com.masterchefcuts.dto.RegisterRequest;
 import com.masterchefcuts.dto.RefreshRequest;
@@ -13,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,9 +37,9 @@ public class AuthController {
     }
 
     @PostMapping("/resend-verification")
-    public ResponseEntity<Void> resendVerification(@RequestParam String email) {
-        authService.resendVerification(email, emailService);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Map<String, String>> resendVerification(@Valid @RequestBody EmailRequest req) {
+        authService.resendVerification(req.getEmail(), emailService);
+        return ResponseEntity.ok(Map.of("message", "Verification email sent."));
     }
 
     @PostMapping("/login")
@@ -67,9 +70,9 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestParam String email) {
-        authService.forgotPassword(email, emailService);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody EmailRequest req) {
+        authService.forgotPassword(req.getEmail(), emailService);
+        return ResponseEntity.ok(Map.of("message", "If that email is registered you will receive a reset link."));
     }
 
     @PostMapping("/reset-password")

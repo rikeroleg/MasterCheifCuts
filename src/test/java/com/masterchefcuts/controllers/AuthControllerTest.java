@@ -144,8 +144,11 @@ class AuthControllerTest {
     void forgotPassword_returns200() throws Exception {
         doNothing().when(authService).forgotPassword(eq("john@example.com"), any(EmailService.class));
 
-        mockMvc.perform(post("/api/auth/forgot-password").param("email", "john@example.com"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"john@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
     }
 
     // ── resetPassword ─────────────────────────────────────────────────────────
@@ -182,8 +185,11 @@ class AuthControllerTest {
     void resendVerification_returns200() throws Exception {
         doNothing().when(authService).resendVerification(eq("john@example.com"), any(EmailService.class));
 
-        mockMvc.perform(post("/api/auth/resend-verification").param("email", "john@example.com"))
-                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/auth/resend-verification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"john@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
     }
     // ── helpers ───────────────────────────────────────────────────────────────
 
