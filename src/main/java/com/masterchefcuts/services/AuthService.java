@@ -37,11 +37,13 @@ public class AuthService {
         if (existing.isPresent()) {
             Participant ex = existing.get();
             if (emailVerificationEnabled && !ex.isEmailVerified()) {
+                // Resend verification but never return existing user data — that would
+                // enable email enumeration and expose internal profile fields.
                 String newToken = UUID.randomUUID().toString();
                 ex.setVerificationToken(newToken);
                 participantRepo.save(ex);
                 emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
-                return buildResponse(ex, null);
+                throw new AppException(HttpStatus.CONFLICT, "EMAIL_NOT_VERIFIED");
             }
             throw new AppException(HttpStatus.CONFLICT, "An account with that email already exists.");
         }
