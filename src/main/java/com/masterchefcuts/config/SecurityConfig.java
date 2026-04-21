@@ -46,7 +46,9 @@ public class SecurityConfig {
                     "/api/auth/forgot-password",
                     "/api/auth/reset-password",
                     "/api/payments/webhook",
-                    "/api/payments/connect-webhook"
+                    "/api/payments/connect-webhook",
+                    "/api/participants/me/notification-preference",
+                    "/api/participants/me/email-preference"
                 )
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
