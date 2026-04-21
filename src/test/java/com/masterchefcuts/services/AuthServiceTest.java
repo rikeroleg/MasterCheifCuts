@@ -90,13 +90,41 @@ class AuthServiceTest {
     }
 
     @Test
-    void register_throwsWhenEmailAlreadyExists() {
+    void register_throwsConflictWhenVerifiedEmailAlreadyExists() {
+        // participant.emailVerified = true (set in setUp)
         RegisterRequest req = buildRegisterRequest(Role.BUYER);
         when(participantRepo.findByEmail(req.getEmail())).thenReturn(Optional.of(participant));
 
         assertThatThrownBy(() -> authService.register(req, emailService))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("already exists");
+    }
+
+    @Test
+    void register_throwsEmailNotVerifiedAndResendsLinkWithoutLeakingUserData() {
+        // Security: duplicate registration of an unverified email must throw 409
+        // EMAIL_NOT_VERIFIED — never return the existing user's profile.
+        ReflectionTestUtils.setField(authService, "emailVerificationEnabled", true);
+
+        Participant unverified = Participant.builder()
+                .id("user-unverified").firstName("John").lastName("Doe")
+                .email("john@example.com").password("encoded-pass")
+                .role(Role.BUYER).zipCode("62701").status("ACTIVE")
+                .approved(true).emailVerified(false)
+                .verificationToken("old-token")
+                .build();
+
+        RegisterRequest req = buildRegisterRequest(Role.BUYER);
+        when(participantRepo.findByEmail(req.getEmail())).thenReturn(Optional.of(unverified));
+        when(participantRepo.save(any(Participant.class))).thenReturn(unverified);
+
+        assertThatThrownBy(() -> authService.register(req, emailService))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("EMAIL_NOT_VERIFIED");
+
+        // Verification email must be resent
+        verify(emailService).sendEmailVerification(eq("john@example.com"), eq("John"), anyString());
+        // But the existing user's data must NOT be returned (exception thrown, no AuthResponse)
     }
 
     // ── login ─────────────────────────────────────────────────────────────────
@@ -344,7 +372,8 @@ class AuthServiceTest {
     }
 
     @Test
-    void register_emailVerificationEnabled_existingUnverified_resendAndReturn() {
+    void register_emailVerificationEnabled_existingUnverified_throwsConflictAndResendsLink() {
+        // Security fix: must throw 409 EMAIL_NOT_VERIFIED instead of returning user data.
         ReflectionTestUtils.setField(authService, "emailVerificationEnabled", true);
         RegisterRequest req = buildRegisterRequest(Role.BUYER);
         Participant unverified = Participant.builder()
@@ -355,9 +384,10 @@ class AuthServiceTest {
         when(participantRepo.findByEmail(req.getEmail())).thenReturn(Optional.of(unverified));
         when(participantRepo.save(unverified)).thenReturn(unverified);
 
-        AuthResponse response = authService.register(req, emailService);
+        assertThatThrownBy(() -> authService.register(req, emailService))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("EMAIL_NOT_VERIFIED");
 
-        assertThat(response.getToken()).isNull();
         verify(emailService).sendEmailVerification(eq("john@example.com"), eq("John"), anyString());
         ReflectionTestUtils.setField(authService, "emailVerificationEnabled", false);
     }

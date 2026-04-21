@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.stripe.exception.StripeException;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,8 +36,6 @@ public class GlobalExceptionHandler {
             fieldErrors.put(fe.getField(), fe.getDefaultMessage());
         }
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.UNPROCESSABLE_ENTITY.value());
         body.put("error", "Validation failed");
         body.put("fields", fieldErrors);
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
@@ -51,8 +48,6 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
         Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", status.value());
         body.put("error", message);
         return ResponseEntity.status(status).body(body);
     }
