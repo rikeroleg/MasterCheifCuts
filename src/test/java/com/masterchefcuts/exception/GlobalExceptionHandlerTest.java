@@ -26,9 +26,9 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody())
-                .containsEntry("status", 400)
                 .containsEntry("error", "something went wrong")
-                .containsKey("timestamp");
+                .doesNotContainKey("timestamp")
+                .doesNotContainKey("status");
     }
 
     @Test
@@ -44,10 +44,10 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
         assertThat(response.getBody())
-                .containsEntry("status", 422)
                 .containsEntry("error", "Validation failed")
                 .containsKey("fields")
-                .containsKey("timestamp");
+                .doesNotContainKey("timestamp")
+                .doesNotContainKey("status");
 
         @SuppressWarnings("unchecked")
         Map<String, String> fields = (Map<String, String>) response.getBody().get("fields");
@@ -61,7 +61,8 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(response.getBody())
-                .containsEntry("status", 403)
-                .containsEntry("error", "Access denied");
+                .containsEntry("error", "Access denied")
+                .doesNotContainKey("timestamp")
+                .doesNotContainKey("status");
     }
 }
