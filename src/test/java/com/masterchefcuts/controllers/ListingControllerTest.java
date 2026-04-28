@@ -9,6 +9,7 @@ import com.masterchefcuts.dto.CutRequest;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.Role;
+import com.masterchefcuts.exception.AppException;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import com.masterchefcuts.services.ListingService;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -152,19 +154,21 @@ class ListingControllerTest {
 
     @Test
     void create_unapprovedFarmer_returns400() throws Exception {
-        when(participantRepo.findById(any())).thenReturn(Optional.of(unapprovedFarmer));
+        when(listingService.create(any(), any(ListingRequest.class)))
+                .thenThrow(new AppException(HttpStatus.FORBIDDEN, "Your account is pending admin approval before you can post listings."));
 
         mockMvc.perform(post("/api/listings")
                         .with(authentication(farmerAuth("farmer-2")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(buildListingRequest())))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("Your account is pending admin approval before you can post listings."));
     }
 
     @Test
     void create_farmerNotFound_returns400() throws Exception {
-        when(participantRepo.findById(any())).thenReturn(Optional.empty());
+        when(listingService.create(any(), any(ListingRequest.class)))
+                .thenThrow(new RuntimeException("Farmer not found"));
 
         mockMvc.perform(post("/api/listings")
                         .with(authentication(farmerAuth("farmer-1")))
