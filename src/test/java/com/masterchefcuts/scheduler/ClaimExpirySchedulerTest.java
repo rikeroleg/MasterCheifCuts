@@ -112,7 +112,7 @@ class ClaimExpirySchedulerTest {
 
         verify(notificationService).send(
                 eq(buyer),
-                eq(NotificationType.CUT_CLAIMED),
+                eq(NotificationType.CLAIM_EXPIRED),
                 eq("⏰"),
                 eq("Claim expired"),
                 contains("Ribeye"),
