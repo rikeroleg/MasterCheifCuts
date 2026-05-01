@@ -56,7 +56,6 @@ public class ListingController {
     }
 
     @PatchMapping("/{id}/processing-date")
-    @PutMapping("/{id}/processing-date")
     @PreAuthorize("hasRole('FARMER')")
     public ResponseEntity<ListingResponse> setProcessingDate(
             @AuthenticationPrincipal String farmerId,
