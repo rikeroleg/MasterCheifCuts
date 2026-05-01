@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.masterchefcuts.dto.PaymentIntentRequest;
 import com.masterchefcuts.dto.PaymentIntentResponse;
+import com.masterchefcuts.enums.Role;
+import com.masterchefcuts.services.AdminSettingsService;
 import com.masterchefcuts.model.Cut;
 import com.masterchefcuts.model.Listing;
 import com.masterchefcuts.model.Order;
@@ -27,7 +29,7 @@ import com.stripe.model.StripeObject;
 import com.stripe.net.Webhook;
 import com.stripe.param.PaymentIntentCreateParams;
 import jakarta.annotation.PostConstruct;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -64,6 +66,7 @@ public class PaymentService {
     private final StripeConnectService stripeConnectService;
     private final RefundService refundService;
     private final EmailService emailService;
+    private final AdminSettingsService adminSettingsService;
 
     /** Platform fee percentage taken from the sale price. */
     private static final double PLATFORM_FEE_RATE = 0.15;
@@ -413,6 +416,23 @@ public class PaymentService {
                     });
         } catch (Exception e) {
             // Don't fail the payment flow if notification fails
+        }
+
+        // Notify all admin users of the new paid order
+        if (adminSettingsService.isAdminOrderNotificationsEnabled()) {
+            try {
+                String amount = String.format("$%.2f", order.getTotalAmount());
+                participantRepo.findByRole(Role.ADMIN).forEach(admin ->
+                    notificationService.send(admin,
+                            com.masterchefcuts.enums.NotificationType.ORDER_PAID,
+                            "🛒",
+                            "New Order Placed",
+                            "A buyer placed a new paid order totalling " + amount + ".",
+                            null,
+                            order.getId()));
+            } catch (Exception e) {
+                // Don't fail the payment flow if admin notification fails
+            }
         }
     }
 

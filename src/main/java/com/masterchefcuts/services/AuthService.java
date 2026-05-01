@@ -72,6 +72,7 @@ public class AuthService {
             String verificationToken = UUID.randomUUID().toString();
             participant.setEmailVerified(false);
             participant.setVerificationToken(verificationToken);
+            participant.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
             participant = participantRepo.save(participant);
             emailService.sendEmailVerification(participant.getEmail(), participant.getFirstName(), verificationToken);
             if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
@@ -108,9 +109,12 @@ public class AuthService {
     @Transactional
     public void verifyEmail(String token) {
         Participant p = participantRepo.findByVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid or expired verification link."));
+                .orElseThrow(() -> new AppException(HttpStatus.BAD_REQUEST, "Invalid or expired verification link."));
+        if (p.getVerificationTokenExpiry() != null && p.getVerificationTokenExpiry().isBefore(LocalDateTime.now()))
+            throw new AppException(HttpStatus.BAD_REQUEST, "Verification link has expired. Please request a new one.");
         p.setEmailVerified(true);
         p.setVerificationToken(null);
+        p.setVerificationTokenExpiry(null);
         participantRepo.save(p);
     }
 
@@ -147,6 +151,7 @@ public class AuthService {
             if (p.isEmailVerified()) return;
             String token = UUID.randomUUID().toString();
             p.setVerificationToken(token);
+            p.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
             participantRepo.save(p);
             emailService.sendEmailVerification(p.getEmail(), p.getFirstName(), token);
         });

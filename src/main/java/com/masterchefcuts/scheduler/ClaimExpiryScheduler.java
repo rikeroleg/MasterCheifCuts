@@ -58,7 +58,7 @@ public class ClaimExpiryScheduler {
             // Notify buyer
             notificationService.send(
                     claim.getBuyer(),
-                    NotificationType.CUT_CLAIMED,
+                    NotificationType.CLAIM_EXPIRED,
                     "⏰",
                     "Claim expired",
                     "Your claim on the " + cut.getLabel() + " cut from the "

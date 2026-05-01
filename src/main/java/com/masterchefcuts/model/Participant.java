@@ -55,6 +55,7 @@ public class Participant {
 
     private boolean emailVerified;
     private String verificationToken;
+    private java.time.LocalDateTime verificationTokenExpiry;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
