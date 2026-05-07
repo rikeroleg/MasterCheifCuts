@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -28,6 +29,8 @@ public class ListingRequest {
 
     @NotBlank
     private String zipCode;
+
+    private LocalDate processingDate;
 
     @NotNull
     private List<CutRequest> cuts;

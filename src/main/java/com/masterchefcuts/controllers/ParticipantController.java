@@ -3,6 +3,7 @@ package com.masterchefcuts.controllers;
 import com.masterchefcuts.dto.AuthResponse;
 import com.masterchefcuts.enums.EmailPreference;
 import com.masterchefcuts.enums.NotificationPreference;
+import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.model.Review;
@@ -119,5 +120,26 @@ public class ParticipantController {
         p.setEmailPreference(pref);
         participantRepo.save(p);
         return ResponseEntity.ok(authService.getMe(participantId));
+    }
+
+    /**
+     * Public farmer profile — exposes only non-sensitive info for storefront display.
+     * Accessible without authentication so guests can browse farmer storefronts.
+     */
+    @GetMapping("/{id}/public")
+    public ResponseEntity<Map<String, Object>> getPublicProfile(@PathVariable String id) {
+        return participantRepo.findById(id)
+                .filter(p -> Role.FARMER.equals(p.getRole()))
+                .map(p -> {
+                    Map<String, Object> profile = new HashMap<>();
+                    profile.put("id", p.getId());
+                    profile.put("name", p.getFirstName() + (p.getLastName() != null ? " " + p.getLastName() : ""));
+                    profile.put("shopName", p.getShopName());
+                    profile.put("bio", p.getBio());
+                    profile.put("certifications", p.getCertifications());
+                    profile.put("zipCode", p.getZipCode());
+                    return ResponseEntity.ok(profile);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }

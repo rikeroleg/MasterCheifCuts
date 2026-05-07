@@ -2,6 +2,7 @@ package com.masterchefcuts.enums;
 
 public enum NotificationType {
     CUT_CLAIMED,
+    CLAIM_EXPIRED,
     LISTING_FULL,
     PROCESSING_SET,
     COMPLETE,
