@@ -81,10 +81,17 @@ public class AuthService {
         }
         participant.setEmailVerified(true);
         participant = participantRepo.save(participant);
+
+        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
+        String refresh = java.util.UUID.randomUUID().toString();
+        participant.setRefreshToken(refresh);
+        participant.setRefreshTokenExpiry(LocalDateTime.now().plusDays(7));
+        participant = participantRepo.save(participant);
+        
         if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
             referralService.recordReferral(req.getReferralCode(), participant.getId());
         }
-        return buildResponse(participant, null);
+        return buildResponse(participant, token, refresh);
     }
 
     public AuthResponse login(LoginRequest req) {
