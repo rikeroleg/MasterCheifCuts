@@ -205,6 +205,7 @@ public class AuthService {
         return AuthResponse.builder()
                 .token(token)
                 .refreshToken(refreshToken)
+                .tokenExpiresAt(token != null ? System.currentTimeMillis() + jwtUtil.getExpirationMs() : null)
                 .id(p.getId())
                 .firstName(p.getFirstName())
                 .lastName(p.getLastName())
