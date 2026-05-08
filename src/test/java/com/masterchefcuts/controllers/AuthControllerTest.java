@@ -10,6 +10,7 @@ import com.masterchefcuts.dto.UpdateProfileRequest;
 import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.services.AuthService;
 import com.masterchefcuts.services.EmailService;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -90,10 +91,13 @@ class AuthControllerTest {
 
     @Test
     void login_returns200WithToken() throws Exception {
+        // Token is issued as an httpOnly cookie — it must NOT appear in the response body.
         AuthResponse withToken = AuthResponse.builder()
-                .id("user-1").token("jwt-token").role(Role.BUYER).approved(true)
+                .id("user-1").token("jwt-token").refreshToken("refresh-token")
+                .role(Role.BUYER).approved(true)
                 .firstName("John").lastName("Doe").email("john@example.com").build();
         when(authService.login(any(LoginRequest.class))).thenReturn(withToken);
+        when(jwtUtil.getExpirationMs()).thenReturn(86400000L);
 
         LoginRequest req = new LoginRequest();
         req.setEmail("john@example.com");
@@ -103,7 +107,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("jwt-token"));
+                .andExpect(jsonPath("$.token").doesNotExist())
+                .andExpect(header().exists("Set-Cookie"));
     }
 
     // ── me ────────────────────────────────────────────────────────────────────
@@ -170,13 +175,20 @@ class AuthControllerTest {
 
     @Test
     void refresh_returns200WithToken() throws Exception {
+        // Refresh token is sent as the httpOnly mc_refresh cookie, not in the request body.
         when(authService.refreshToken("my-refresh-token")).thenReturn(SAMPLE_RESPONSE);
+        when(jwtUtil.getExpirationMs()).thenReturn(86400000L);
 
         mockMvc.perform(post("/api/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"refreshToken\":\"my-refresh-token\"}"))
+                        .cookie(new Cookie("mc_refresh", "my-refresh-token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("user-1"));
+    }
+
+    @Test
+    void refresh_withoutCookie_returns401() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh"))
+                .andExpect(status().isUnauthorized());
     }
 
     // ── resendVerification ────────────────────────────────────────────────────────
