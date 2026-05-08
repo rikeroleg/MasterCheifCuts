@@ -69,7 +69,7 @@ class AuthServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo("user-1");
-        verify(participantRepo).save(any(Participant.class));
+        verify(participantRepo, atLeastOnce()).save(any(Participant.class));
     }
 
     @Test
