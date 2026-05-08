@@ -10,7 +10,6 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,6 +34,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(Customizer.withDefaults())
+            // CSRF is always enabled. Auth endpoints use httpOnly SameSite=Strict cookies
+            // and are excluded from CSRF checks because they don't require a prior session
+            // (no CSRF token to validate). Webhook endpoints are excluded because they are
+            // called by external services that cannot obtain a CSRF token.
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .ignoringRequestMatchers(
@@ -45,8 +48,11 @@ public class SecurityConfig {
                     "/api/auth/resend-verification",
                     "/api/auth/forgot-password",
                     "/api/auth/reset-password",
+                    "/api/auth/logout",
                     "/api/payments/webhook",
-                    "/api/payments/connect-webhook"
+                    "/api/payments/connect-webhook",
+                    "/api/participants/me/notification-preference",
+                    "/api/participants/me/email-preference"
                 )
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -58,6 +64,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/resend-verification").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payments/connect-webhook").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
@@ -66,6 +73,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/reviews/featured").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/farmer/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/animal-requests").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/participants/*/public").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")

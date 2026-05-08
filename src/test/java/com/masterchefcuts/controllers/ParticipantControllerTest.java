@@ -251,4 +251,45 @@ class ParticipantControllerTest {
             SecurityContextHolder.clearContext();
         }
     }
+
+    // ── GET /api/participants/{id}/public ────────────────────────────────────
+
+    @Test
+    void getPublicProfile_returns200_forFarmer() throws Exception {
+        Participant farmer = Participant.builder()
+                .id("farmer-1").firstName("John").lastName("Smith")
+                .role(Role.FARMER).email("john@farm.com").password("pass")
+                .shopName("Smith Ranch").bio("Grass-fed beef").certifications("USDA Organic")
+                .zipCode("90210").status("ACTIVE").approved(true).build();
+        when(participantRepo.findById("farmer-1")).thenReturn(Optional.of(farmer));
+
+        mockMvc.perform(get("/api/participants/farmer-1/public"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("farmer-1"))
+                .andExpect(jsonPath("$.name").value("John Smith"))
+                .andExpect(jsonPath("$.shopName").value("Smith Ranch"))
+                .andExpect(jsonPath("$.bio").value("Grass-fed beef"))
+                .andExpect(jsonPath("$.certifications").value("USDA Organic"))
+                .andExpect(jsonPath("$.zipCode").value("90210"));
+    }
+
+    @Test
+    void getPublicProfile_returns404_forBuyer() throws Exception {
+        Participant buyer = Participant.builder()
+                .id("buyer-99").firstName("Bob").lastName("Buyer")
+                .role(Role.BUYER).email("bob@buyer.com").password("pass")
+                .status("ACTIVE").approved(true).build();
+        when(participantRepo.findById("buyer-99")).thenReturn(Optional.of(buyer));
+
+        mockMvc.perform(get("/api/participants/buyer-99/public"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getPublicProfile_returns404_whenNotFound() throws Exception {
+        when(participantRepo.findById("ghost-id")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/participants/ghost-id/public"))
+                .andExpect(status().isNotFound());
+    }
 }

@@ -72,6 +72,7 @@ public class AuthService {
             String verificationToken = UUID.randomUUID().toString();
             participant.setEmailVerified(false);
             participant.setVerificationToken(verificationToken);
+            participant.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
             participant = participantRepo.save(participant);
             emailService.sendEmailVerification(participant.getEmail(), participant.getFirstName(), verificationToken);
             if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
@@ -81,10 +82,17 @@ public class AuthService {
         }
         participant.setEmailVerified(true);
         participant = participantRepo.save(participant);
+
+        String token = jwtUtil.generateToken(participant.getId(), participant.getRole().name());
+        String refresh = java.util.UUID.randomUUID().toString();
+        participant.setRefreshToken(refresh);
+        participant.setRefreshTokenExpiry(LocalDateTime.now().plusDays(7));
+        participant = participantRepo.save(participant);
+        
         if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
             referralService.recordReferral(req.getReferralCode(), participant.getId());
         }
-        return buildResponse(participant, null);
+        return buildResponse(participant, token, refresh);
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -108,9 +116,12 @@ public class AuthService {
     @Transactional
     public void verifyEmail(String token) {
         Participant p = participantRepo.findByVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid or expired verification link."));
+                .orElseThrow(() -> new AppException(HttpStatus.BAD_REQUEST, "Invalid or expired verification link."));
+        if (p.getVerificationTokenExpiry() != null && p.getVerificationTokenExpiry().isBefore(LocalDateTime.now()))
+            throw new AppException(HttpStatus.BAD_REQUEST, "Verification link has expired. Please request a new one.");
         p.setEmailVerified(true);
         p.setVerificationToken(null);
+        p.setVerificationTokenExpiry(null);
         participantRepo.save(p);
     }
 
@@ -147,6 +158,7 @@ public class AuthService {
             if (p.isEmailVerified()) return;
             String token = UUID.randomUUID().toString();
             p.setVerificationToken(token);
+            p.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
             participantRepo.save(p);
             emailService.sendEmailVerification(p.getEmail(), p.getFirstName(), token);
         });
@@ -198,6 +210,7 @@ public class AuthService {
         return AuthResponse.builder()
                 .token(token)
                 .refreshToken(refreshToken)
+                .tokenExpiresAt(token != null ? System.currentTimeMillis() + jwtUtil.getExpirationMs() : null)
                 .id(p.getId())
                 .firstName(p.getFirstName())
                 .lastName(p.getLastName())

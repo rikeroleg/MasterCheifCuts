@@ -3,8 +3,6 @@ package com.masterchefcuts.controllers;
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
 import com.masterchefcuts.dto.ListingUpdateRequest;
-import com.masterchefcuts.model.Participant;
-import com.masterchefcuts.repositories.ParticipantRepo;
 import com.masterchefcuts.services.ListingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +23,6 @@ import java.util.List;
 public class ListingController {
 
     private final ListingService listingService;
-    private final ParticipantRepo participantRepo;
 
     @GetMapping
     public ResponseEntity<List<ListingResponse>> getAll(
@@ -55,15 +52,10 @@ public class ListingController {
     @PreAuthorize("hasRole('FARMER')")
     public ResponseEntity<ListingResponse> create(@AuthenticationPrincipal String farmerId,
                                                    @Valid @RequestBody ListingRequest req) {
-        Participant farmer = participantRepo.findById(farmerId)
-                .orElseThrow(() -> new RuntimeException("Farmer not found"));
-        if (!farmer.isApproved())
-            throw new RuntimeException("Your account is pending admin approval before you can post listings.");
         return ResponseEntity.ok(listingService.create(farmerId, req));
     }
 
     @PatchMapping("/{id}/processing-date")
-    @PutMapping("/{id}/processing-date")
     @PreAuthorize("hasRole('FARMER')")
     public ResponseEntity<ListingResponse> setProcessingDate(
             @AuthenticationPrincipal String farmerId,

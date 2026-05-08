@@ -4,6 +4,7 @@ import com.masterchefcuts.dto.ReviewResponse;
 import com.masterchefcuts.model.Order;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.services.AdminService;
+import com.masterchefcuts.services.AdminSettingsService;
 import com.masterchefcuts.services.ReviewService;
 import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class AdminController {
 
     private final AdminService adminService;
     private final ReviewService reviewService;
+    private final AdminSettingsService adminSettingsService;
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/admin/users")
@@ -124,5 +126,20 @@ public class AdminController {
     public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
         reviewService.adminDeleteReview(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Admin Settings ────────────────────────────────────────────────────────
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/api/admin/settings")
+    public ResponseEntity<Map<String, Object>> getSettings() {
+        return ResponseEntity.ok(adminSettingsService.toMap());
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/api/admin/settings/order-notifications/toggle")
+    public ResponseEntity<Map<String, Object>> toggleOrderNotifications() {
+        adminSettingsService.toggleAdminOrderNotifications();
+        return ResponseEntity.ok(adminSettingsService.toMap());
     }
 }

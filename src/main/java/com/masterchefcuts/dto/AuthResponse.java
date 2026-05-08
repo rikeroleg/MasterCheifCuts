@@ -32,4 +32,7 @@ public class AuthResponse {
     private EmailPreference emailPreference;
     private String bio;
     private String certifications;
+    /** Epoch-ms when the access token expires. Used by the frontend refresh timer.
+     *  Never present in /me or profile-update responses (token is null there). */
+    private Long tokenExpiresAt;
 }

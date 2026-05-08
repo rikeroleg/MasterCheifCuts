@@ -3,6 +3,8 @@ package com.masterchefcuts.services;
 import com.masterchefcuts.dto.ListingRequest;
 import com.masterchefcuts.dto.ListingResponse;
 import com.masterchefcuts.dto.ListingUpdateRequest;
+import com.masterchefcuts.exception.AppException;
+import org.springframework.http.HttpStatus;
 import com.masterchefcuts.enums.AnimalType;
 import com.masterchefcuts.enums.ListingStatus;
 import com.masterchefcuts.enums.NotificationType;
@@ -62,6 +64,9 @@ public class ListingService {
         Participant farmer = participantRepo.findById(farmerId)
                 .orElseThrow(() -> new RuntimeException("Farmer not found"));
 
+        if (!farmer.isApproved())
+            throw new AppException(HttpStatus.FORBIDDEN, "Your account is pending admin approval before you can post listings.");
+
         if (stripeConnectRequired && !Boolean.TRUE.equals(farmer.getStripeOnboardingComplete())) {
             throw new IllegalStateException(
                     "You must connect your bank account via Stripe before posting a listing. " +
@@ -77,6 +82,7 @@ public class ListingService {
                 .sourceFarm(req.getSourceFarm())
                 .description(req.getDescription())
                 .zipCode(req.getZipCode())
+                .processingDate(req.getProcessingDate())
                 .build();
 
         List<Cut> cuts = req.getCuts().stream()
