@@ -94,12 +94,16 @@ public class AuthService {
         return buildResponse(participant, token, refresh);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest req) {
         Participant participant = participantRepo.findByEmail(req.getEmail())
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password."));
 
         if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password.");
+
+        if (!"ACTIVE".equals(participant.getStatus()))
+            throw new AppException(HttpStatus.FORBIDDEN, "Account is suspended or inactive.");
 
         if (emailVerificationEnabled && !participant.isEmailVerified())
             throw new AppException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED");
@@ -176,6 +180,8 @@ public class AuthService {
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token."));
         if (p.getRefreshTokenExpiry() == null || p.getRefreshTokenExpiry().isBefore(LocalDateTime.now()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Refresh token has expired.");
+        if (!"ACTIVE".equals(p.getStatus()))
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Account is suspended or inactive.");
         // Rotate: invalidate the old token immediately
         String newAccess   = jwtUtil.generateToken(p.getId(), p.getRole().name());
         String newRefresh  = java.util.UUID.randomUUID().toString();
