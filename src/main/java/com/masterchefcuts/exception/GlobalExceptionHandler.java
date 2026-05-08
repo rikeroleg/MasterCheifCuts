@@ -24,6 +24,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
+
     @ExceptionHandler(StripeException.class)
     public ResponseEntity<Map<String, Object>> handleStripe(StripeException ex) {
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
