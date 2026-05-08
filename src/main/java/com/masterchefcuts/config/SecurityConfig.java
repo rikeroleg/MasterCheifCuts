@@ -53,6 +53,7 @@ public class SecurityConfig {
                             "/api/auth/resend-verification",
                             "/api/auth/forgot-password",
                             "/api/auth/reset-password",
+                            "/api/auth/logout",
                             "/api/payments/webhook",
                             "/api/payments/connect-webhook",
                             "/api/participants/me/notification-preference",
@@ -69,6 +70,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/resend-verification").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/forgot-password").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payments/connect-webhook").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()

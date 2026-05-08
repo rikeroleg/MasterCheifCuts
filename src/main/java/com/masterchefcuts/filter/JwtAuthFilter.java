@@ -3,6 +3,7 @@ package com.masterchefcuts.filter;
 import com.masterchefcuts.config.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +27,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
 
-        // Extract token from Authorization header, falling back to the
-        // ?token= query param used by EventSource (SSE) which cannot set headers.
+        // 1. Authorization: Bearer header (legacy / service-to-service)
         String token = null;
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
-        } else {
+        }
+
+        // 2. httpOnly mc_auth cookie (primary browser flow)
+        if (token == null) {
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if ("mc_auth".equals(cookie.getName())) {
+                        token = cookie.getValue();
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 3. ?token= query param — kept for EventSource (SSE) which cannot set headers.
+        //    Cookies are preferred; this fallback remains for backward compat.
+        if (token == null) {
             String queryToken = request.getParameter("token");
             if (queryToken != null && !queryToken.isBlank()) {
                 token = queryToken;
