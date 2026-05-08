@@ -10,15 +10,12 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-
-import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 @EnableWebSecurity
@@ -27,9 +24,6 @@ import org.springframework.beans.factory.annotation.Value;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-
-    @Value("${security.csrf.disabled:false}")
-    private boolean csrfDisabled;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -40,26 +34,22 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(Customizer.withDefaults())
-            .csrf(csrf -> {
-                if (csrfDisabled) {
-                    csrf.disable();
-                } else {
-                    csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers(
-                            "/api/auth/register",
-                            "/api/auth/verify-email",
-                            "/api/auth/login",
-                            "/api/auth/refresh",
-                            "/api/auth/resend-verification",
-                            "/api/auth/forgot-password",
-                            "/api/auth/reset-password",
-                            "/api/payments/webhook",
-                            "/api/payments/connect-webhook",
-                            "/api/participants/me/notification-preference",
-                            "/api/participants/me/email-preference"
-                        );
-                }
-            })
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .ignoringRequestMatchers(
+                    "/api/auth/register",
+                    "/api/auth/verify-email",
+                    "/api/auth/login",
+                    "/api/auth/refresh",
+                    "/api/auth/resend-verification",
+                    "/api/auth/forgot-password",
+                    "/api/auth/reset-password",
+                    "/api/payments/webhook",
+                    "/api/payments/connect-webhook",
+                    "/api/participants/me/notification-preference",
+                    "/api/participants/me/email-preference"
+                )
+            )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
