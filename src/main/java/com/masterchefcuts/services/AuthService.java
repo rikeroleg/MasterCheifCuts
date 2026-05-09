@@ -65,7 +65,7 @@ public class AuthService {
                 .city(req.getCity())
                 .state(req.getState())
                 .zipCode(req.getZipCode())
-                .status("ACTIVE")
+                .status(STATUS_ACTIVE)
                 .totalSpent(0)
                 .approved(!isFarmer)
                 .build();
@@ -104,7 +104,7 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password.");
 
-        if (!STATUS_ACTIVE.equals(participant.getStatus()))
+        if (!STATUS_ACTIVE.equalsIgnoreCase(participant.getStatus()))
             throw new AppException(HttpStatus.FORBIDDEN, "Account is suspended or inactive.");
 
         if (emailVerificationEnabled && !participant.isEmailVerified())
@@ -182,7 +182,7 @@ public class AuthService {
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token."));
         if (p.getRefreshTokenExpiry() == null || p.getRefreshTokenExpiry().isBefore(LocalDateTime.now()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Refresh token has expired.");
-        if (!STATUS_ACTIVE.equals(p.getStatus()))
+        if (!STATUS_ACTIVE.equalsIgnoreCase(p.getStatus()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Account is suspended or inactive.");
         // Rotate: invalidate the old token immediately
         String newAccess   = jwtUtil.generateToken(p.getId(), p.getRole().name());
