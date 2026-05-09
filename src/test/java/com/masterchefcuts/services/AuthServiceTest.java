@@ -17,7 +17,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -216,8 +220,9 @@ class AuthServiceTest {
     @Test
     void verifyEmail_success_setsEmailVerifiedAndClearsToken() {
         participant.setEmailVerified(false);
-        participant.setVerificationToken("valid-token");
-        when(participantRepo.findByVerificationToken("valid-token")).thenReturn(Optional.of(participant));
+        // Store the SHA-256 hash of the raw token (as the service does before persisting)
+        participant.setVerificationToken(sha256("valid-token"));
+        when(participantRepo.findByVerificationToken(sha256("valid-token"))).thenReturn(Optional.of(participant));
 
         authService.verifyEmail("valid-token");
 
@@ -228,8 +233,7 @@ class AuthServiceTest {
 
     @Test
     void verifyEmail_throwsForInvalidToken() {
-        when(participantRepo.findByVerificationToken("bad-token")).thenReturn(Optional.empty());
-
+        // No stub needed — unstubbed call returns Optional.empty() which triggers the exception
         assertThatThrownBy(() -> authService.verifyEmail("bad-token"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Invalid or expired");
@@ -338,10 +342,11 @@ class AuthServiceTest {
 
     @Test
     void resetPassword_success_encodesNewPassword() {
-        participant.setResetToken("reset-token");
+        // Store the SHA-256 hash of the raw token (as the service does before persisting)
+        participant.setResetToken(sha256("reset-token"));
         participant.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
 
-        when(participantRepo.findByResetToken("reset-token")).thenReturn(Optional.of(participant));
+        when(participantRepo.findByResetToken(sha256("reset-token"))).thenReturn(Optional.of(participant));
         when(passwordEncoder.encode("new-pass")).thenReturn("encoded-new-pass");
 
         authService.resetPassword("reset-token", "new-pass");
@@ -354,8 +359,7 @@ class AuthServiceTest {
 
     @Test
     void resetPassword_throwsForInvalidToken() {
-        when(participantRepo.findByResetToken("bad-token")).thenReturn(Optional.empty());
-
+        // No stub needed — unstubbed call returns Optional.empty() which triggers the exception
         assertThatThrownBy(() -> authService.resetPassword("bad-token", "new-pass"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Invalid or expired");
@@ -363,10 +367,11 @@ class AuthServiceTest {
 
     @Test
     void resetPassword_throwsWhenTokenExpired() {
-        participant.setResetToken("expired-token");
+        // Store the SHA-256 hash of the raw token
+        participant.setResetToken(sha256("expired-token"));
         participant.setResetTokenExpiry(LocalDateTime.now().minusHours(1));
 
-        when(participantRepo.findByResetToken("expired-token")).thenReturn(Optional.of(participant));
+        when(participantRepo.findByResetToken(sha256("expired-token"))).thenReturn(Optional.of(participant));
 
         assertThatThrownBy(() -> authService.resetPassword("expired-token", "new-pass"))
                 .isInstanceOf(RuntimeException.class)
@@ -374,6 +379,17 @@ class AuthServiceTest {
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
+
+    /** Mirror of AuthService.sha256() so tests can compute expected stored tokens. */
+    private static String sha256(String raw) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(raw.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new AssertionError("SHA-256 unavailable", e);
+        }
+    }
 
     private RegisterRequest buildRegisterRequest(Role role) {
         RegisterRequest req = new RegisterRequest();

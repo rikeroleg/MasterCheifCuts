@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 @Configuration
 @EnableWebSecurity
@@ -35,6 +36,31 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(Customizer.withDefaults())
+            .headers(h -> {
+                // Prevent clickjacking
+                h.frameOptions(f -> f.deny());
+                // Avoid MIME-type sniffing (also set by Spring Security defaults, made explicit)
+                h.contentTypeOptions(Customizer.withDefaults());
+                // Referrer-Policy: only send origin on same-origin, strip on cross-origin
+                h.referrerPolicy(r -> r.policy(
+                        ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                // Permissions-Policy: deny access to sensitive browser features
+                h.permissionsPolicy(p -> p.policy(
+                        "geolocation=(), microphone=(), camera=(), payment=(self)"));
+                // Content-Security-Policy: restrict resource origins
+                // Stripe requires frame-src and connect-src; GCS for images.
+                h.contentSecurityPolicy(csp -> csp.policyDirectives(
+                        "default-src 'self'; " +
+                        "script-src 'self' https://js.stripe.com; " +
+                        "frame-src https://js.stripe.com; " +
+                        "img-src 'self' data: blob: https://storage.googleapis.com; " +
+                        "connect-src 'self' https://api.stripe.com https://*.sentry.io; " +
+                        "style-src 'self' 'unsafe-inline'; " +
+                        "font-src 'self' data:; " +
+                        "object-src 'none'; " +
+                        "base-uri 'self'"
+                ));
+            })
             // CSRF is always enabled. Auth endpoints use httpOnly SameSite=Strict cookies
             // and are excluded from CSRF checks because they don't require a prior session
             // (no CSRF token to validate). Webhook endpoints are excluded because they are

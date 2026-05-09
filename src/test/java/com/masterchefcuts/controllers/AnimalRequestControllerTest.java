@@ -15,6 +15,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -22,6 +24,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -35,8 +38,17 @@ class AnimalRequestControllerTest {
     @MockBean AnimalRequestService animalRequestService;
     @MockBean JwtUtil jwtUtil;
 
-    private static final String AUTH_HEADER = "Bearer my-token";
     private AnimalRequestResponse sampleResponse;
+
+    private UsernamePasswordAuthenticationToken buyerAuth() {
+        return new UsernamePasswordAuthenticationToken("buyer-1", null,
+                List.of(new SimpleGrantedAuthority("ROLE_BUYER")));
+    }
+
+    private UsernamePasswordAuthenticationToken farmerAuth() {
+        return new UsernamePasswordAuthenticationToken("farmer-1", null,
+                List.of(new SimpleGrantedAuthority("ROLE_FARMER")));
+    }
 
     @BeforeEach
     void setUp() {
@@ -52,7 +64,6 @@ class AnimalRequestControllerTest {
 
     @Test
     void create_returns200WithResponse() throws Exception {
-        when(jwtUtil.extractId("my-token")).thenReturn("buyer-1");
         when(animalRequestService.create(eq("buyer-1"), any(AnimalRequestRequest.class)))
                 .thenReturn(sampleResponse);
 
@@ -63,7 +74,7 @@ class AnimalRequestControllerTest {
         req.setCutLabels(List.of("Ribeye"));
 
         mockMvc.perform(post("/api/animal-requests")
-                        .header("Authorization", AUTH_HEADER)
+                        .with(authentication(buyerAuth()))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -78,6 +89,80 @@ class AnimalRequestControllerTest {
         when(animalRequestService.getOpen()).thenReturn(List.of(sampleResponse));
 
         mockMvc.perform(get("/api/animal-requests"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("OPEN"));
+    }
+
+    // ── GET /api/animal-requests/my ───────────────────────────────────────────
+
+    @Test
+    void getMine_returns200WithBuyerRequests() throws Exception {
+        when(animalRequestService.getMyRequests("buyer-1")).thenReturn(List.of(sampleResponse));
+
+        mockMvc.perform(get("/api/animal-requests/my")
+                        .with(authentication(buyerAuth())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].buyerId").value("buyer-1"));
+    }
+
+    // ── POST /api/animal-requests/{id}/fulfill ────────────────────────────────
+
+    @Test
+    void fulfill_returns200WithFulfilledResponse() throws Exception {
+        AnimalRequestResponse fulfilled = AnimalRequestResponse.builder()
+                .id(1L).animalType(AnimalType.BEEF).breed("Angus")
+                .zipCode("12345").cutLabels(List.of("Ribeye"))
+                .status(AnimalRequestStatus.FULFILLED).buyerId("buyer-1")
+                .buyerName("Bob Buyer").buyerZip("12345").fulfilledByFarmerId("farmer-1")
+                .fulfilledListingId(10L).createdAt(LocalDateTime.now()).build();
+
+        when(animalRequestService.fulfill(eq(1L), eq("farmer-1"), any(FulfillRequestBody.class)))
+                .thenReturn(fulfilled);
+
+        FulfillRequestBody body = new FulfillRequestBody();
+        body.setWeightLbs(500);
+        body.setPricePerLb(12.0);
+
+        mockMvc.perform(post("/api/animal-requests/1/fulfill")
+                        .with(authentication(farmerAuth()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FULFILLED"));
+    }
+
+    @Test
+    void fulfill_serviceThrows_returns400() throws Exception {
+        when(animalRequestService.fulfill(anyLong(), anyString(), any()))
+                .thenThrow(new RuntimeException("Request not found"));
+
+        mockMvc.perform(post("/api/animal-requests/99/fulfill")
+                        .with(authentication(farmerAuth()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightLbs\":500,\"pricePerLb\":10.0}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── DELETE /api/animal-requests/{id} ──────────────────────────────────────
+
+    @Test
+    void cancel_returns204() throws Exception {
+        doNothing().when(animalRequestService).cancel(1L, "buyer-1");
+
+        mockMvc.perform(delete("/api/animal-requests/1")
+                        .with(authentication(buyerAuth())))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void cancel_serviceThrows_returns400() throws Exception {
+        doThrow(new RuntimeException("Not authorized")).when(animalRequestService).cancel(1L, "buyer-1");
+
+        mockMvc.perform(delete("/api/animal-requests/1")
+                        .with(authentication(buyerAuth())))
+                .andExpect(status().isBadRequest());
+    }
+}
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("OPEN"));
     }

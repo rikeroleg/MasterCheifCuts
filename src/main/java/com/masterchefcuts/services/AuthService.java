@@ -17,7 +17,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.UUID;
 
 @Service
@@ -44,7 +48,7 @@ public class AuthService {
                 // Resend verification but never return existing user data — that would
                 // enable email enumeration and expose internal profile fields.
                 String newToken = UUID.randomUUID().toString();
-                ex.setVerificationToken(newToken);
+                ex.setVerificationToken(sha256(newToken));
                 participantRepo.save(ex);
                 emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
                 log.info("register: verification re-sent for unverified account [{}]", maskEmail(req.getEmail()));
@@ -75,12 +79,12 @@ public class AuthService {
                 .build();
 
         if (emailVerificationEnabled) {
-            String verificationToken = UUID.randomUUID().toString();
+            String rawVerificationToken = UUID.randomUUID().toString();
             participant.setEmailVerified(false);
-            participant.setVerificationToken(verificationToken);
+            participant.setVerificationToken(sha256(rawVerificationToken));
             participant.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
             participant = participantRepo.save(participant);
-            emailService.sendEmailVerification(participant.getEmail(), participant.getFirstName(), verificationToken);
+            emailService.sendEmailVerification(participant.getEmail(), participant.getFirstName(), rawVerificationToken);
             if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
                 referralService.recordReferral(req.getReferralCode(), participant.getId());
             }
@@ -128,7 +132,7 @@ public class AuthService {
 
     @Transactional
     public void verifyEmail(String token) {
-        Participant p = participantRepo.findByVerificationToken(token)
+        Participant p = participantRepo.findByVerificationToken(sha256(token))
                 .orElseThrow(() -> new AppException(HttpStatus.BAD_REQUEST, "Invalid or expired verification link."));
         if (p.getVerificationTokenExpiry() != null && p.getVerificationTokenExpiry().isBefore(LocalDateTime.now()))
             throw new AppException(HttpStatus.BAD_REQUEST, "Verification link has expired. Please request a new one.");
@@ -169,22 +173,22 @@ public class AuthService {
     public void resendVerification(String email, EmailService emailService) {
         participantRepo.findByEmail(email).ifPresent(p -> {
             if (p.isEmailVerified()) return;
-            String token = UUID.randomUUID().toString();
-            p.setVerificationToken(token);
+            String rawToken = UUID.randomUUID().toString();
+            p.setVerificationToken(sha256(rawToken));
             p.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
             participantRepo.save(p);
-            emailService.sendEmailVerification(p.getEmail(), p.getFirstName(), token);
+            emailService.sendEmailVerification(p.getEmail(), p.getFirstName(), rawToken);
         });
     }
 
     @Transactional
     public void forgotPassword(String email, EmailService emailService) {
         participantRepo.findByEmail(email).ifPresent(p -> {
-            String token = UUID.randomUUID().toString();
-            p.setResetToken(token);
+            String rawToken = UUID.randomUUID().toString();
+            p.setResetToken(sha256(rawToken));
             p.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
             participantRepo.save(p);
-            emailService.sendPasswordReset(p.getEmail(), p.getFirstName(), token);
+            emailService.sendPasswordReset(p.getEmail(), p.getFirstName(), rawToken);
         });
     }
 
@@ -207,7 +211,7 @@ public class AuthService {
 
     @Transactional
     public void resetPassword(String token, String newPassword) {
-        Participant p = participantRepo.findByResetToken(token)
+        Participant p = participantRepo.findByResetToken(sha256(token))
                 .orElseThrow(() -> new RuntimeException("Invalid or expired reset link."));
         if (p.getResetTokenExpiry() == null || p.getResetTokenExpiry().isBefore(LocalDateTime.now()))
             throw new RuntimeException("Reset link has expired.");
@@ -243,6 +247,20 @@ public class AuthService {
                 .bio(p.getBio())
                 .certifications(p.getCertifications())
                 .build();
+    }
+
+    /**
+     * SHA-256 hash a token value before persisting. Raw tokens are sent via email;
+     * only their hash is stored so a DB breach cannot be used to reset accounts.
+     */
+    private static String sha256(String raw) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(raw.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     /** Mask email for safe logging — e.g. jo***@example.com */
