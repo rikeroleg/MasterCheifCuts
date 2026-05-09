@@ -18,14 +18,33 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
     public ResponseEntity<Map<String, Object>> handleApp(AppException ex) {
-        log.warn("AppException [{}]: {}", ex.getStatus().value(), ex.getMessage());
+        HttpStatus status = ex.getStatus();
+        if (status.is5xxServerError()) {
+            log.error("AppException [{}]: {}", status.value(), ex.getMessage(), ex);
+        } else if (status == HttpStatus.UNAUTHORIZED
+                || status == HttpStatus.BAD_REQUEST
+                || status == HttpStatus.CONFLICT
+                || status == HttpStatus.NOT_FOUND
+                || status == HttpStatus.UNPROCESSABLE_ENTITY) {
+            log.info("AppException [{}]: {}", status.value(), ex.getMessage());
+        } else if (status.is4xxClientError()) {
+            log.warn("AppException [{}]: {}", status.value(), ex.getMessage());
+        } else {
+            log.error("AppException [{}]: {}", status.value(), ex.getMessage(), ex);
+        }
         return error(ex.getStatus(), ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        log.info("IllegalArgumentException: {}", ex.getMessage());
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
         log.error("Unhandled RuntimeException: {}", ex.getMessage(), ex);
-        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)

@@ -240,8 +240,11 @@ public class AuthService {
     /** Mask email for safe logging — e.g. jo***@example.com */
     private static String maskEmail(String email) {
         if (email == null) return "null";
-        int at = email.indexOf('@');
-        if (at <= 2) return "***" + email.substring(at);
-        return email.substring(0, 2) + "***" + email.substring(at);
+        String normalized = email.trim();
+        if (normalized.isEmpty()) return "***";
+        int at = normalized.indexOf('@');
+        if (at <= 0) return "***";
+        if (at <= 2) return "***" + normalized.substring(at);
+        return normalized.substring(0, 2) + "***" + normalized.substring(at);
     }
 }

@@ -37,6 +37,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     );
 
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastRateLimitLogAtByIp = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -56,7 +57,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     times.pollFirst();
                 }
                 if (times.size() >= MAX_REQUESTS) {
-                    log.warn("Rate limit exceeded: ip={} path={}", ip, request.getServletPath());
+                    Long lastLoggedAt = lastRateLimitLogAtByIp.get(ip);
+                    if (lastLoggedAt == null || now - lastLoggedAt >= WINDOW_MS) {
+                        log.warn("Rate limit exceeded: ip={} path={}", ip, request.getServletPath());
+                        lastRateLimitLogAtByIp.put(ip, now);
+                    } else {
+                        log.debug("Rate limit exceeded (suppressed warn): ip={} path={}", ip, request.getServletPath());
+                    }
                     response.setContentType("application/json");
                     response.setStatus(429);
                     response.getWriter().write(
@@ -69,7 +76,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 synchronized (e.getValue()) {
                     return e.getValue().isEmpty();
                 }
-            });        }
+            });
+            lastRateLimitLogAtByIp.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
+        }
 
         chain.doFilter(request, response);
     }

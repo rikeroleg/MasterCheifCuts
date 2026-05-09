@@ -171,6 +171,20 @@ class AuthServiceTest {
                 .hasMessageContaining("Incorrect email or password");
     }
 
+    @Test
+    void login_withMalformedEmail_doesNotThrowMaskingError() {
+        LoginRequest req = new LoginRequest();
+        req.setEmail("malformed-email");
+        req.setPassword("password");
+
+        when(participantRepo.findByEmail(req.getEmail())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Incorrect email or password")
+                .isNotInstanceOf(StringIndexOutOfBoundsException.class);
+    }
+
     // ── verifyEmail ───────────────────────────────────────────────────────────
 
     @Test
