@@ -20,11 +20,11 @@ class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    void handleRuntime_returns500WithErrorMessage() {
+    void handleRuntime_returns400WithErrorMessage() {
         ResponseEntity<Map<String, Object>> response =
                 handler.handleRuntime(new RuntimeException("something went wrong"));
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody())
                 .containsEntry("error", "something went wrong")
                 .doesNotContainKey("timestamp")

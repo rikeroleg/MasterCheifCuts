@@ -43,8 +43,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
-        log.error("Unhandled RuntimeException: {}", ex.getMessage(), ex);
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+        log.warn("RuntimeException: {}", ex.getMessage());
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)
