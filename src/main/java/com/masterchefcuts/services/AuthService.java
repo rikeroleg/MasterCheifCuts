@@ -25,6 +25,8 @@ import java.util.UUID;
 @Slf4j
 public class AuthService {
 
+    private static final String STATUS_ACTIVE = "ACTIVE";
+
     @Value("${features.email-verification:false}")
     private boolean emailVerificationEnabled;
 
@@ -67,7 +69,7 @@ public class AuthService {
                 .city(req.getCity())
                 .state(req.getState())
                 .zipCode(req.getZipCode())
-                .status("ACTIVE")
+                .status(STATUS_ACTIVE)
                 .totalSpent(0)
                 .approved(!isFarmer)
                 .build();
@@ -101,12 +103,16 @@ public class AuthService {
         return buildResponse(participant, token, refresh);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest req) {
         Participant participant = participantRepo.findByEmail(req.getEmail())
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password."));
 
         if (!passwordEncoder.matches(req.getPassword(), participant.getPassword()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Incorrect email or password.");
+
+        if (!STATUS_ACTIVE.equalsIgnoreCase(participant.getStatus()))
+            throw new AppException(HttpStatus.FORBIDDEN, "Account is suspended or inactive.");
 
         if (emailVerificationEnabled && !participant.isEmailVerified())
             throw new AppException(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED");
@@ -188,6 +194,8 @@ public class AuthService {
                 .orElseThrow(() -> new AppException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token."));
         if (p.getRefreshTokenExpiry() == null || p.getRefreshTokenExpiry().isBefore(LocalDateTime.now()))
             throw new AppException(HttpStatus.UNAUTHORIZED, "Refresh token has expired.");
+        if (!STATUS_ACTIVE.equalsIgnoreCase(p.getStatus()))
+            throw new AppException(HttpStatus.UNAUTHORIZED, "Account is suspended or inactive.");
         // Rotate: invalidate the old token immediately
         String newAccess   = jwtUtil.generateToken(p.getId(), p.getRole().name());
         String newRefresh  = java.util.UUID.randomUUID().toString();

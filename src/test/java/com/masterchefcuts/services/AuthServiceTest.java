@@ -191,6 +191,26 @@ class AuthServiceTest {
         assertThat(masked).isEqualTo("***");
     }
 
+    @Test
+    void login_throwsWhenAccountNotActive() {
+        LoginRequest req = new LoginRequest();
+        req.setEmail("john@example.com");
+        req.setPassword("password");
+
+        Participant suspended = Participant.builder()
+                .id("user-1").firstName("John").lastName("Doe")
+                .email("john@example.com").password("encoded-pass")
+                .role(Role.BUYER).status("SUSPENDED").approved(true).emailVerified(true)
+                .build();
+
+        when(participantRepo.findByEmail(req.getEmail())).thenReturn(Optional.of(suspended));
+        when(passwordEncoder.matches(req.getPassword(), suspended.getPassword())).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("suspended or inactive");
+    }
+
     // ── verifyEmail ───────────────────────────────────────────────────────────
 
     @Test
@@ -527,5 +547,21 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.refreshToken("expired-refresh"))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("expired");
+    }
+
+    @Test
+    void refreshToken_inactiveAccount_throws() {
+        Participant suspended = Participant.builder()
+                .id("user-1").firstName("John").lastName("Doe")
+                .email("john@example.com").password("encoded-pass")
+                .role(Role.BUYER).status("SUSPENDED").approved(true).emailVerified(true)
+                .refreshToken("valid-refresh")
+                .refreshTokenExpiry(LocalDateTime.now().plusDays(3))
+                .build();
+        when(participantRepo.findByRefreshToken("valid-refresh")).thenReturn(Optional.of(suspended));
+
+        assertThatThrownBy(() -> authService.refreshToken("valid-refresh"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("suspended or inactive");
     }
 }
