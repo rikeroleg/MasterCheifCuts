@@ -15,6 +15,7 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Sliding-window rate limiter: max 10 POST requests per minute per IP on
@@ -38,7 +39,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
     private final Map<String, Long> lastRateLimitLogAtByIp = new ConcurrentHashMap<>();
-    private volatile long lastCleanupAt = 0L;
+    private final AtomicLong lastCleanupAt = new AtomicLong(0L);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -72,15 +73,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     return;
                 }
                 times.addLast(now);
-            }            // Best-effort eviction of stale entries from the map
-            if (now - lastCleanupAt >= WINDOW_MS) {
+            }
+
+            // Best-effort eviction of stale entries from the map
+            long previousCleanupAt = lastCleanupAt.get();
+            if (now - previousCleanupAt >= WINDOW_MS && lastCleanupAt.compareAndSet(previousCleanupAt, now)) {
                 requestTimes.entrySet().removeIf(e -> {
                     synchronized (e.getValue()) {
                         return e.getValue().isEmpty();
                     }
                 });
                 lastRateLimitLogAtByIp.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
-                lastCleanupAt = now;
             }
         }
 

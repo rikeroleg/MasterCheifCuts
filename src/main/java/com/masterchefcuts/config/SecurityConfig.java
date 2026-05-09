@@ -1,6 +1,5 @@
 package com.masterchefcuts.config;
 
-import com.masterchefcuts.filter.CsrfCookieFilter;
 import com.masterchefcuts.filter.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -40,11 +39,7 @@ public class SecurityConfig {
             // (no CSRF token to validate). Webhook endpoints are excluded because they are
             // called by external services that cannot obtain a CSRF token.
             .csrf(csrf -> csrf
-                .csrfTokenRepository(SpaCookieCsrfTokenRepository.withHttpOnlyFalse())
-                // CsrfTokenRequestAttributeHandler reads the raw token value from the
-                // X-XSRF-TOKEN header, which the SPA sends after reading the XSRF-TOKEN
-                // cookie.  This avoids the XOR masking mismatch with the default handler.
-                .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .ignoringRequestMatchers(
                     "/api/auth/register",
                     "/api/auth/verify-email",
@@ -86,10 +81,6 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            // Eagerly evaluate the deferred CSRF token so the XSRF-TOKEN cookie is
-            // written in every response, allowing the SPA to read it and send it as
-            // the X-XSRF-TOKEN header on subsequent mutating requests.
-            .addFilterAfter(new CsrfCookieFilter(), UsernamePasswordAuthenticationFilter.class)
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) -> {
                     res.setContentType("application/json");

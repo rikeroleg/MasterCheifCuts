@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
-        log.warn("RuntimeException: {}", ex.getMessage());
+        log.warn("RuntimeException: {}", ex.getMessage(), ex);
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
