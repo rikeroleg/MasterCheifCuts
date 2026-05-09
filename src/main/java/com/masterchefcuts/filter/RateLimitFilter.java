@@ -38,6 +38,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
     private final Map<String, Long> lastRateLimitLogAtByIp = new ConcurrentHashMap<>();
+    private volatile long lastCleanupAt = 0L;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -72,12 +73,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 }
                 times.addLast(now);
             }            // Best-effort eviction of stale entries from the map
-            requestTimes.entrySet().removeIf(e -> {
-                synchronized (e.getValue()) {
-                    return e.getValue().isEmpty();
-                }
-            });
-            lastRateLimitLogAtByIp.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
+            if (now - lastCleanupAt >= WINDOW_MS) {
+                requestTimes.entrySet().removeIf(e -> {
+                    synchronized (e.getValue()) {
+                        return e.getValue().isEmpty();
+                    }
+                });
+                lastRateLimitLogAtByIp.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
+                lastCleanupAt = now;
+            }
         }
 
         chain.doFilter(request, response);

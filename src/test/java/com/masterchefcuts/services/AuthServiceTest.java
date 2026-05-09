@@ -185,6 +185,12 @@ class AuthServiceTest {
                 .isNotInstanceOf(StringIndexOutOfBoundsException.class);
     }
 
+    @Test
+    void maskEmail_withMalformedEmail_returnsSafePlaceholder() {
+        String masked = ReflectionTestUtils.invokeMethod(authService, "maskEmail", "malformed-email");
+        assertThat(masked).isEqualTo("***");
+    }
+
     // ── verifyEmail ───────────────────────────────────────────────────────────
 
     @Test
