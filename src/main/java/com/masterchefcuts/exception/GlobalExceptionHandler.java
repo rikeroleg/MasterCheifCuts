@@ -1,5 +1,6 @@
 package com.masterchefcuts.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -12,25 +13,30 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
     public ResponseEntity<Map<String, Object>> handleApp(AppException ex) {
+        log.warn("AppException [{}]: {}", ex.getStatus().value(), ex.getMessage());
         return error(ex.getStatus(), ex.getMessage());
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
+        log.error("Unhandled RuntimeException: {}", ex.getMessage(), ex);
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        log.error("IllegalStateException: {}", ex.getMessage(), ex);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
     }
 
     @ExceptionHandler(StripeException.class)
     public ResponseEntity<Map<String, Object>> handleStripe(StripeException ex) {
+        log.warn("StripeException [{}]: {}", ex.getStatusCode(), ex.getMessage());
         return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
@@ -40,6 +46,7 @@ public class GlobalExceptionHandler {
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(fe.getField(), fe.getDefaultMessage());
         }
+        log.debug("Validation failed: {}", fieldErrors);
         Map<String, Object> body = new HashMap<>();
         body.put("error", "Validation failed");
         body.put("fields", fieldErrors);
@@ -48,6 +55,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(Exception ex) {
+        log.warn("AccessDeniedException: {}", ex.getMessage());
         return error(HttpStatus.FORBIDDEN, "Access denied");
     }
 

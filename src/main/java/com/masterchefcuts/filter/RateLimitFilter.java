@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 @Order(1)
+@Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int MAX_REQUESTS = 10;
@@ -54,6 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     times.pollFirst();
                 }
                 if (times.size() >= MAX_REQUESTS) {
+                    log.warn("Rate limit exceeded: ip={} path={}", ip, request.getServletPath());
                     response.setContentType("application/json");
                     response.setStatus(429);
                     response.getWriter().write(
