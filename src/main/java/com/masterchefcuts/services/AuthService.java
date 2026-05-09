@@ -9,6 +9,7 @@ import com.masterchefcuts.enums.Role;
 import com.masterchefcuts.model.Participant;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import com.masterchefcuts.exception.AppException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private static final String STATUS_ACTIVE = "ACTIVE";
@@ -45,8 +47,10 @@ public class AuthService {
                 ex.setVerificationToken(newToken);
                 participantRepo.save(ex);
                 emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
+                log.info("register: verification re-sent for unverified account [{}]", maskEmail(req.getEmail()));
                 throw new AppException(HttpStatus.CONFLICT, "EMAIL_NOT_VERIFIED");
             }
+            log.warn("register: duplicate email attempt [{}]", maskEmail(req.getEmail()));
             throw new AppException(HttpStatus.CONFLICT, "An account with that email already exists.");
         }
 
@@ -80,6 +84,7 @@ public class AuthService {
             if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
                 referralService.recordReferral(req.getReferralCode(), participant.getId());
             }
+            log.info("register: verification email sent [{}] role={}", maskEmail(req.getEmail()), req.getRole());
             return buildResponse(participant, null);
         }
         participant.setEmailVerified(true);
@@ -94,6 +99,7 @@ public class AuthService {
         if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
             referralService.recordReferral(req.getReferralCode(), participant.getId());
         }
+        log.info("register: success [{}] role={}", maskEmail(req.getEmail()), req.getRole());
         return buildResponse(participant, token, refresh);
     }
 
@@ -116,6 +122,7 @@ public class AuthService {
         participant.setRefreshToken(refresh);
         participant.setRefreshTokenExpiry(LocalDateTime.now().plusDays(7));
         participantRepo.save(participant);
+        log.info("login: success [{}] role={}", maskEmail(req.getEmail()), participant.getRole());
         return buildResponse(participant, token, refresh);
     }
 
@@ -236,5 +243,16 @@ public class AuthService {
                 .bio(p.getBio())
                 .certifications(p.getCertifications())
                 .build();
+    }
+
+    /** Mask email for safe logging — e.g. jo***@example.com */
+    private static String maskEmail(String email) {
+        if (email == null) return "null";
+        String normalized = email.trim();
+        if (normalized.isEmpty()) return "***";
+        int at = normalized.indexOf('@');
+        if (at <= 0) return "***";
+        if (at <= 2) return "***" + normalized.substring(at);
+        return normalized.substring(0, 2) + "***" + normalized.substring(at);
     }
 }

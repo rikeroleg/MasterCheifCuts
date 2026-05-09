@@ -32,6 +32,18 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleIllegalArgument_returns400WithErrorMessage() {
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleIllegalArgument(new IllegalArgumentException("bad request"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody())
+                .containsEntry("error", "bad request")
+                .doesNotContainKey("timestamp")
+                .doesNotContainKey("status");
+    }
+
+    @Test
     void handleValidation_returns422WithFieldErrors() {
         MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
         BindingResult bindingResult = mock(BindingResult.class);

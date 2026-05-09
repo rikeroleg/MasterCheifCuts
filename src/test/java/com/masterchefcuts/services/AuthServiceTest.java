@@ -172,6 +172,26 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_withMalformedEmail_doesNotThrowMaskingError() {
+        LoginRequest req = new LoginRequest();
+        req.setEmail("malformed-email");
+        req.setPassword("password");
+
+        when(participantRepo.findByEmail(req.getEmail())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(req))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Incorrect email or password")
+                .isNotInstanceOf(StringIndexOutOfBoundsException.class);
+    }
+
+    @Test
+    void maskEmail_withMalformedEmail_returnsSafePlaceholder() {
+        String masked = ReflectionTestUtils.invokeMethod(authService, "maskEmail", "malformed-email");
+        assertThat(masked).isEqualTo("***");
+    }
+
+    @Test
     void login_throwsWhenAccountNotActive() {
         LoginRequest req = new LoginRequest();
         req.setEmail("john@example.com");

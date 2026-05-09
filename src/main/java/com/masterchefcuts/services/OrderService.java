@@ -10,6 +10,7 @@ import com.masterchefcuts.repositories.OrderRepository;
 import com.masterchefcuts.repositories.ParticipantRepo;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
@@ -139,6 +141,7 @@ public class OrderService {
                 "Status changed to " + targetStatus.name() + " by farmer at " + LocalDateTime.now()));
         orderRepository.save(order);
 
+        log.info("order status: {} → {} [orderId={}, farmerId={}]", currentStatus, targetStatus, orderId, farmerId);
         auditService.log(farmerId, "ORDER_STATUS_CHANGED", orderId);
 
         // Send notification to buyer
@@ -226,6 +229,7 @@ public class OrderService {
                 "Receipt confirmed by buyer at " + LocalDateTime.now()));
         orderRepository.save(order);
 
+        log.info("order confirmed by buyer [orderId={}, buyerId={}]", orderId, buyerId);
         auditService.log(buyerId, "ORDER_CONFIRMED", orderId);
 
         // Email buyer confirmation

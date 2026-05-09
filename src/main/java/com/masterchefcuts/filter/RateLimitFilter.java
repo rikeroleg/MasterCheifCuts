@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -14,6 +15,7 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Sliding-window rate limiter: max 10 POST requests per minute per IP on
@@ -21,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Component
 @Order(1)
+@Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final int MAX_REQUESTS = 10;
@@ -35,6 +38,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     );
 
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
+    private final Map<String, Long> lastRateLimitLogAtByIp = new ConcurrentHashMap<>();
+    private final AtomicLong lastCleanupAt = new AtomicLong(0L);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -54,6 +59,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     times.pollFirst();
                 }
                 if (times.size() >= MAX_REQUESTS) {
+                    Long lastLoggedAt = lastRateLimitLogAtByIp.get(ip);
+                    if (lastLoggedAt == null || now - lastLoggedAt >= WINDOW_MS) {
+                        log.warn("Rate limit exceeded: ip={} path={}", ip, request.getServletPath());
+                        lastRateLimitLogAtByIp.put(ip, now);
+                    } else {
+                        log.debug("Rate limit exceeded (suppressed warn): ip={} path={}", ip, request.getServletPath());
+                    }
                     response.setContentType("application/json");
                     response.setStatus(429);
                     response.getWriter().write(
@@ -61,12 +73,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
                     return;
                 }
                 times.addLast(now);
-            }            // Best-effort eviction of stale entries from the map
-            requestTimes.entrySet().removeIf(e -> {
-                synchronized (e.getValue()) {
-                    return e.getValue().isEmpty();
-                }
-            });        }
+            }
+
+            // Best-effort eviction of stale entries from the map
+            long previousCleanupAt = lastCleanupAt.get();
+            if (now - previousCleanupAt >= WINDOW_MS && lastCleanupAt.compareAndSet(previousCleanupAt, now)) {
+                requestTimes.entrySet().removeIf(e -> {
+                    synchronized (e.getValue()) {
+                        return e.getValue().isEmpty();
+                    }
+                });
+                lastRateLimitLogAtByIp.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
+            }
+        }
 
         chain.doFilter(request, response);
     }
