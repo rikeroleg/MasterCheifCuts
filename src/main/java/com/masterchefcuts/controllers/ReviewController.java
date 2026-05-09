@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,17 +35,17 @@ public class ReviewController {
 
     @GetMapping("/api/reviews/has-reviewed")
     public ResponseEntity<Boolean> hasReviewed(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String userId,
             @RequestParam Long listingId) {
-        if (userDetails == null) return ResponseEntity.ok(false);
-        return ResponseEntity.ok(reviewService.hasReviewed(userDetails.getUsername(), listingId));
+        if (userId == null) return ResponseEntity.ok(false);
+        return ResponseEntity.ok(reviewService.hasReviewed(userId, listingId));
     }
 
     @PreAuthorize("hasRole('BUYER')")
     @PostMapping("/api/reviews")
     public ResponseEntity<ReviewResponse> createReview(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal String userId,
             @Valid @RequestBody ReviewRequest req) {
-        return ResponseEntity.ok(reviewService.createReview(userDetails.getUsername(), req));
+        return ResponseEntity.ok(reviewService.createReview(userId, req));
     }
 }

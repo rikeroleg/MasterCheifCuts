@@ -1,6 +1,5 @@
 package com.masterchefcuts.controllers;
 
-import com.masterchefcuts.config.JwtUtil;
 import com.masterchefcuts.dto.AnimalRequestRequest;
 import com.masterchefcuts.dto.AnimalRequestResponse;
 import com.masterchefcuts.dto.FulfillRequestBody;
@@ -9,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,15 +19,13 @@ import java.util.List;
 public class AnimalRequestController {
 
     private final AnimalRequestService animalRequestService;
-    private final JwtUtil jwtUtil;
 
     /** Buyer submits a new animal request */
     @PostMapping
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<AnimalRequestResponse> create(
             @Valid @RequestBody AnimalRequestRequest req,
-            @RequestHeader("Authorization") String authHeader) {
-        String buyerId = extractId(authHeader);
+            @AuthenticationPrincipal String buyerId) {
         return ResponseEntity.ok(animalRequestService.create(buyerId, req));
     }
 
@@ -41,8 +39,7 @@ public class AnimalRequestController {
     @GetMapping("/my")
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<List<AnimalRequestResponse>> getMine(
-            @RequestHeader("Authorization") String authHeader) {
-        String buyerId = extractId(authHeader);
+            @AuthenticationPrincipal String buyerId) {
         return ResponseEntity.ok(animalRequestService.getMyRequests(buyerId));
     }
 
@@ -52,8 +49,7 @@ public class AnimalRequestController {
     public ResponseEntity<AnimalRequestResponse> fulfill(
             @PathVariable Long id,
             @Valid @RequestBody FulfillRequestBody body,
-            @RequestHeader("Authorization") String authHeader) {
-        String farmerId = extractId(authHeader);
+            @AuthenticationPrincipal String farmerId) {
         return ResponseEntity.ok(animalRequestService.fulfill(id, farmerId, body));
     }
 
@@ -62,8 +58,7 @@ public class AnimalRequestController {
     @PreAuthorize("hasRole('BUYER')")
     public ResponseEntity<Void> cancel(
             @PathVariable Long id,
-            @RequestHeader("Authorization") String authHeader) {
-        String buyerId = extractId(authHeader);
+            @AuthenticationPrincipal String buyerId) {
         animalRequestService.cancel(id, buyerId);
         return ResponseEntity.noContent().build();
     }
@@ -74,13 +69,7 @@ public class AnimalRequestController {
     public ResponseEntity<AnimalRequestResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody AnimalRequestRequest req,
-            @RequestHeader("Authorization") String authHeader) {
-        String buyerId = extractId(authHeader);
+            @AuthenticationPrincipal String buyerId) {
         return ResponseEntity.ok(animalRequestService.updateRequest(id, buyerId, req));
-    }
-
-    private String extractId(String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        return jwtUtil.extractId(token);
     }
 }
