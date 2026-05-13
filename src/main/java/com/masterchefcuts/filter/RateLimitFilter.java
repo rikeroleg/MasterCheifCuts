@@ -46,6 +46,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/listings/{listingId}/comments", new int[]{20, 60},
             "/api/contact",                  new int[]{3,  60}
     );
+    private static final Map<String, String[]> PATH_TEMPLATE_SEGMENTS = PATH_LIMITS.keySet().stream()
+            .collect(java.util.stream.Collectors.toUnmodifiableMap(k -> k, k -> k.split("/")));
 
     // key: "ip:limitPrefix" → sliding window of request timestamps
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
@@ -127,9 +129,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private boolean matchesPathTemplatePrefix(String path, String template) {
-        String normalizedPath = path.split("\\?", 2)[0];
+        String normalizedPath = stripQuery(path);
         String[] pathSegments = normalizedPath.split("/");
-        String[] templateSegments = template.split("/");
+        String[] templateSegments = PATH_TEMPLATE_SEGMENTS.get(template);
         if (pathSegments.length < templateSegments.length) {
             return false;
         }
@@ -143,6 +145,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
         }
         return true;
+    }
+
+    private static String stripQuery(String path) {
+        int queryIndex = path.indexOf('?');
+        return queryIndex >= 0 ? path.substring(0, queryIndex) : path;
     }
 
     private String getClientIp(HttpServletRequest request) {

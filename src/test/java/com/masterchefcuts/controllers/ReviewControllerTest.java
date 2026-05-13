@@ -11,9 +11,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -39,11 +36,6 @@ class ReviewControllerTest {
     private final ReviewResponse SAMPLE = ReviewResponse.builder()
             .id(1L).listingId(1L).buyerName("Bob B.").rating(5)
             .comment("Great beef!").createdAt(LocalDateTime.now()).build();
-
-    private UsernamePasswordAuthenticationToken buyerAuth() {
-        return new UsernamePasswordAuthenticationToken("buyer-1", null,
-                List.of(new SimpleGrantedAuthority("ROLE_BUYER")));
-    }
 
     // ── GET /api/listings/{listingId}/reviews ─────────────────────────────────
 
@@ -132,29 +124,23 @@ class ReviewControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "buyer-1", roles = {"BUYER"})
     void hasReviewed_returnsTrue_whenReviewExists() throws Exception {
         when(reviewService.hasReviewed("buyer-1", 1L)).thenReturn(true);
-        SecurityContextHolder.getContext().setAuthentication(buyerAuth());
-        try {
-            mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").value(true));
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+
+        mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(true));
     }
 
     @Test
+    @WithMockUser(username = "buyer-1", roles = {"BUYER"})
     void hasReviewed_returnsFalse_whenNoReview() throws Exception {
         when(reviewService.hasReviewed("buyer-1", 1L)).thenReturn(false);
-        SecurityContextHolder.getContext().setAuthentication(buyerAuth());
-        try {
-            mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").value(false));
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+
+        mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value(false));
     }
 
     // ── GET /api/reviews/featured ─────────────────────────────────────────────────
