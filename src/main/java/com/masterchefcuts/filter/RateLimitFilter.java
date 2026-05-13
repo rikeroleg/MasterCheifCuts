@@ -42,12 +42,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/auth/refresh",             new int[]{10, 60},
             "/api/reviews",                  new int[]{5,  60},
             "/api/animal-requests",          new int[]{3,  60},
-            "/api/waitlist",                 new int[]{10, 60},
-            "/api/comments",                 new int[]{20, 60},
+            "/api/listings/{listingId}/waitlist", new int[]{10, 60},
+            "/api/listings/{listingId}/comments", new int[]{20, 60},
             "/api/contact",                  new int[]{3,  60}
     );
 
-    // key: "ip:path" → sliding window of request timestamps
+    // key: "ip:limitPrefix" → sliding window of request timestamps
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
     private final Map<String, Long> lastRateLimitLogAt = new ConcurrentHashMap<>();
     private final AtomicLong lastCleanupAt = new AtomicLong(0L);
@@ -59,13 +59,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         if ("POST".equalsIgnoreCase(request.getMethod())) {
             String path = request.getServletPath();
-            int[] limit = matchLimit(path);
+            String limitKey = matchLimitKey(path);
+            int[] limit = limitKey == null ? null : PATH_LIMITS.get(limitKey);
 
             if (limit != null) {
                 int maxRequests  = limit[0];
                 long windowMs    = (long) limit[1] * 1_000L;
                 String ip        = getClientIp(request);
-                String bucketKey = ip + ":" + path;
+                String bucketKey = ip + ":" + limitKey;
                 long now         = System.currentTimeMillis();
 
                 Deque<Long> times = requestTimes.computeIfAbsent(bucketKey, k -> new ArrayDeque<>());
@@ -111,19 +112,37 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     /**
      * Match the request path against configured limits.
-     * Exact match first, then prefix match (for paths like /api/waitlist/{id}/join).
+     * Supports template segments (e.g. {listingId}) and prefix match for nested paths.
      */
-    private int[] matchLimit(String path) {
-        // Exact match
-        int[] exact = PATH_LIMITS.get(path);
-        if (exact != null) return exact;
-        // Prefix match (e.g. /api/waitlist/123/join matches /api/waitlist)
-        for (Map.Entry<String, int[]> entry : PATH_LIMITS.entrySet()) {
-            if (path.startsWith(entry.getKey() + "/") || path.startsWith(entry.getKey() + "?")) {
-                return entry.getValue();
+    private String matchLimitKey(String path) {
+        if (PATH_LIMITS.containsKey(path)) {
+            return path;
+        }
+        for (String key : PATH_LIMITS.keySet()) {
+            if (matchesPathTemplatePrefix(path, key)) {
+                return key;
             }
         }
         return null;
+    }
+
+    private boolean matchesPathTemplatePrefix(String path, String template) {
+        String normalizedPath = path.split("\\?", 2)[0];
+        String[] pathSegments = normalizedPath.split("/");
+        String[] templateSegments = template.split("/");
+        if (pathSegments.length < templateSegments.length) {
+            return false;
+        }
+        for (int i = 0; i < templateSegments.length; i++) {
+            String templateSegment = templateSegments[i];
+            if (templateSegment.startsWith("{") && templateSegment.endsWith("}")) {
+                continue;
+            }
+            if (!templateSegment.equals(pathSegments[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String getClientIp(HttpServletRequest request) {

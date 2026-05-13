@@ -96,6 +96,29 @@ class RateLimitFilterTest {
         assertThat(res.getStatus()).isEqualTo(429);
     }
 
+    @Test
+    void waitlistPath_exceedsLimitAcrossDifferentListingIds_returns429() throws Exception {
+        String ip = "172.16.0.6";
+
+        // Shared bucket by matched prefix (/api/listings/{listingId}/waitlist), not full path
+        for (int i = 0; i < 10; i++) {
+            long listingId = (i % 2 == 0) ? 1L : 2L;
+            MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/listings/" + listingId + "/waitlist");
+            req.setServletPath("/api/listings/" + listingId + "/waitlist");
+            req.setRemoteAddr(ip);
+            filter.doFilterInternal(req, new MockHttpServletResponse(), mock(FilterChain.class));
+        }
+
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/listings/3/waitlist");
+        req.setServletPath("/api/listings/3/waitlist");
+        req.setRemoteAddr(ip);
+        MockHttpServletResponse res = new MockHttpServletResponse();
+
+        filter.doFilterInternal(req, res, mock(FilterChain.class));
+
+        assertThat(res.getStatus()).isEqualTo(429);
+    }
+
     // ── IP isolation ──────────────────────────────────────────────────────────
 
     @Test

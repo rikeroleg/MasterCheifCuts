@@ -49,6 +49,7 @@ public class AuthService {
                 // enable email enumeration and expose internal profile fields.
                 String newToken = UUID.randomUUID().toString();
                 ex.setVerificationToken(sha256(newToken));
+                ex.setVerificationTokenExpiry(LocalDateTime.now().plusHours(24));
                 participantRepo.save(ex);
                 emailService.sendEmailVerification(ex.getEmail(), ex.getFirstName(), newToken);
                 log.info("register: verification re-sent for unverified account [{}]", maskEmail(req.getEmail()));
@@ -133,9 +134,13 @@ public class AuthService {
     @Transactional
     public void verifyEmail(String token) {
         Participant p = participantRepo.findByVerificationToken(sha256(token))
+                .or(() -> participantRepo.findByVerificationToken(token))
                 .orElseThrow(() -> new AppException(HttpStatus.BAD_REQUEST, "Invalid or expired verification link."));
         if (p.getVerificationTokenExpiry() != null && p.getVerificationTokenExpiry().isBefore(LocalDateTime.now()))
             throw new AppException(HttpStatus.BAD_REQUEST, "Verification link has expired. Please request a new one.");
+        if (token.equals(p.getVerificationToken())) {
+            p.setVerificationToken(sha256(token));
+        }
         p.setEmailVerified(true);
         p.setVerificationToken(null);
         p.setVerificationTokenExpiry(null);
@@ -212,9 +217,13 @@ public class AuthService {
     @Transactional
     public void resetPassword(String token, String newPassword) {
         Participant p = participantRepo.findByResetToken(sha256(token))
+                .or(() -> participantRepo.findByResetToken(token))
                 .orElseThrow(() -> new RuntimeException("Invalid or expired reset link."));
         if (p.getResetTokenExpiry() == null || p.getResetTokenExpiry().isBefore(LocalDateTime.now()))
             throw new RuntimeException("Reset link has expired.");
+        if (token.equals(p.getResetToken())) {
+            p.setResetToken(sha256(token));
+        }
         p.setPassword(passwordEncoder.encode(newPassword));
         p.setResetToken(null);
         p.setResetTokenExpiry(null);

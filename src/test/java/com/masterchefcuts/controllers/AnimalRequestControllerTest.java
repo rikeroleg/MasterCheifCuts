@@ -60,7 +60,7 @@ class AnimalRequestControllerTest {
                 .createdAt(LocalDateTime.now()).build();
     }
 
-    // â”€â”€ POST /api/animal-requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // -- POST /api/animal-requests ------------------------------------------------
 
     @Test
     void create_returns200WithResponse() throws Exception {
@@ -82,7 +82,7 @@ class AnimalRequestControllerTest {
                 .andExpect(jsonPath("$.buyerId").value("buyer-1"));
     }
 
-    // â”€â”€ GET /api/animal-requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // -- GET /api/animal-requests -------------------------------------------------
 
     @Test
     void getOpen_returns200WithList() throws Exception {
@@ -93,7 +93,7 @@ class AnimalRequestControllerTest {
                 .andExpect(jsonPath("$[0].status").value("OPEN"));
     }
 
-    // â”€â”€ GET /api/animal-requests/my â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // -- GET /api/animal-requests/my ----------------------------------------------
 
     @Test
     void getMine_returns200WithBuyerRequests() throws Exception {
@@ -105,7 +105,7 @@ class AnimalRequestControllerTest {
                 .andExpect(jsonPath("$[0].buyerId").value("buyer-1"));
     }
 
-    // â”€â”€ POST /api/animal-requests/{id}/fulfill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // -- POST /api/animal-requests/{id}/fulfill -----------------------------------
 
     @Test
     void fulfill_returns200WithFulfilledResponse() throws Exception {
@@ -143,7 +143,7 @@ class AnimalRequestControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // â”€â”€ DELETE /api/animal-requests/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // -- DELETE /api/animal-requests/{id} -----------------------------------------
 
     @Test
     void cancel_returns204() throws Exception {
