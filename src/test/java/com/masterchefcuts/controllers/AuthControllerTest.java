@@ -74,7 +74,7 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(buildRegisterRequest())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("An account with that email already exists."));
+                .andExpect(jsonPath("$.error").value("Bad request"));
     }
 
     // ── verifyEmail ───────────────────────────────────────────────────────────

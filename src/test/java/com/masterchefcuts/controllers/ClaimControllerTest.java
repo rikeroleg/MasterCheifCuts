@@ -84,7 +84,7 @@ class ClaimControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Cut is already claimed"));
+                .andExpect(jsonPath("$.error").value("Bad request"));
     }
 
     // ── GET /api/listings/{listingId}/claims ──────────────────────────────────

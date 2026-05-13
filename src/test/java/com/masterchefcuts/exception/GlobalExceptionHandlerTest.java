@@ -20,13 +20,14 @@ class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    void handleRuntime_returns400WithErrorMessage() {
+    void handleRuntime_returns400WithGenericMessage() {
         ResponseEntity<Map<String, Object>> response =
                 handler.handleRuntime(new RuntimeException("something went wrong"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // Handler intentionally returns a generic message to avoid leaking internal details
         assertThat(response.getBody())
-                .containsEntry("error", "something went wrong")
+                .containsEntry("error", "Bad request")
                 .doesNotContainKey("timestamp")
                 .doesNotContainKey("status");
     }
