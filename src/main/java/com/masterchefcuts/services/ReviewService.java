@@ -17,7 +17,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,6 @@ public class ReviewService {
     private final NotificationService notificationService;
     private final EmailService emailService;
 
-    @Transactional
     public ReviewResponse createReview(String buyerId, ReviewRequest req) {
         Listing listing = listingRepository.findById(req.getListingId())
                 .orElseThrow(() -> new RuntimeException("Listing not found"));

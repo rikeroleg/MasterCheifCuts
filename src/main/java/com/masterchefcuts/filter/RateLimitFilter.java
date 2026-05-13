@@ -14,6 +14,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Sliding-window rate limiter applied to auth endpoints and user-facing mutation
@@ -48,8 +49,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     // key: "ip:path" → sliding window of request timestamps
     private final Map<String, Deque<Long>> requestTimes = new ConcurrentHashMap<>();
-    private final Map<String, Long> lastRateLimitLogAt  = new ConcurrentHashMap<>();
-    private volatile long lastCleanupAt = 0L;
+    private final Map<String, Long> lastRateLimitLogAt = new ConcurrentHashMap<>();
+    private final AtomicLong lastCleanupAt = new AtomicLong(0L);
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -74,8 +75,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         times.pollFirst();
                     }
                     if (times.size() >= maxRequests) {
-                        Long lastLogged = lastRateLimitLogAt.get(bucketKey);
-                        if (lastLogged == null || now - lastLogged >= windowMs) {
+                        Long lastLoggedAt = lastRateLimitLogAt.get(bucketKey);
+                        if (lastLoggedAt == null || now - lastLoggedAt >= windowMs) {
                             log.warn("Rate limit exceeded: ip={} path={}", ip, path);
                             lastRateLimitLogAt.put(bucketKey, now);
                         } else {
@@ -91,12 +92,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 }
 
                 // Best-effort eviction of stale entries from the map
-                if (now - lastCleanupAt >= WINDOW_MS) {
+                long previousCleanupAt = lastCleanupAt.get();
+                if (now - previousCleanupAt >= WINDOW_MS && lastCleanupAt.compareAndSet(previousCleanupAt, now)) {
                     requestTimes.entrySet().removeIf(e -> {
-                        synchronized (e.getValue()) { return e.getValue().isEmpty(); }
+                        synchronized (e.getValue()) {
+                            return e.getValue().isEmpty();
+                        }
                     });
                     lastRateLimitLogAt.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
-                    lastCleanupAt = now;
                 }
             }
         }
