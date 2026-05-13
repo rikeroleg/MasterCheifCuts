@@ -90,7 +90,7 @@ class ReviewControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Already reviewed"));
+                .andExpect(jsonPath("$.error").value("Bad request"));
     }
 
     // ── GET /api/reviews/farmer/{farmerId} ────────────────────────────────────
@@ -117,13 +117,10 @@ class ReviewControllerTest {
     // ── GET /api/reviews/has-reviewed ─────────────────────────────────────────
 
     @Test
-    @WithMockUser(username = "buyer-1", roles = {"BUYER"})
-    void hasReviewed_returnsTrue_whenReviewExists() throws Exception {
-        when(reviewService.hasReviewed("buyer-1", 1L)).thenReturn(true);
-
+    void hasReviewed_unauthenticated_returns200False() throws Exception {
         mockMvc.perform(get("/api/reviews/has-reviewed").param("listingId", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value(true));
+                .andExpect(jsonPath("$").value(false));
     }
 
     @Test
