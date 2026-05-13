@@ -92,14 +92,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 }
 
                 // Best-effort eviction of stale entries from the map
-                long previousCleanupAt = lastCleanupAt.get();
-                if (now - previousCleanupAt >= WINDOW_MS && lastCleanupAt.compareAndSet(previousCleanupAt, now)) {
-                    requestTimes.entrySet().removeIf(e -> {
-                        synchronized (e.getValue()) {
-                            return e.getValue().isEmpty();
-                        }
-                    });
-                    lastRateLimitLogAt.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
+                while (true) {
+                    long previousCleanupAt = lastCleanupAt.get();
+                    if (now - previousCleanupAt < WINDOW_MS) {
+                        break;
+                    }
+                    if (lastCleanupAt.compareAndSet(previousCleanupAt, now)) {
+                        requestTimes.entrySet().removeIf(e -> {
+                            synchronized (e.getValue()) {
+                                return e.getValue().isEmpty();
+                            }
+                        });
+                        lastRateLimitLogAt.entrySet().removeIf(e -> !requestTimes.containsKey(e.getKey()));
+                        break;
+                    }
                 }
             }
         }
